@@ -762,7 +762,13 @@ firebase.initializeApp(FB_CFG);
 const AUTH = firebase.auth();
 const DB   = firebase.firestore();
 
-const ALLOWED_EMAILS = ['tobias.bales@gmx.de','t.bales@gmx.de'];
+const ALLOWED_EMAILS = [
+  'tobias.bales@gmx.de',
+  'daniel_pauli@web.de',
+  'patrick.seefelder@yahoo.de',
+  'alex_schmitt@online.de',
+  'pasi-schweich@web.de'
+];
 const AV_COLS = ['#cc1b1b','#1d56c8','#059669','#7c3aed','#d97706','#0891b2','#db2777'];
 
 function eColor(e){let h=0;for(let i=0;i<e.length;i++)h=(h*31+e.charCodeAt(i))%AV_COLS.length;return AV_COLS[h];}
