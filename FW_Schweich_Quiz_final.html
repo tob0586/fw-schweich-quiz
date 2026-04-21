@@ -1,0 +1,1539 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="theme-color" content="#cc1b1b">
+<title>FW Schweich Quiz</title>
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800;900&display=swap');
+:root {
+  --red:#cc1b1b; --red-dark:#a01515; --red-light:#fff0f0;
+  --blue:#1d56c8; --blue-light:#dbeafe;
+  --cyan:#0891b2; --cyan-light:#cffafe;
+  --green:#059669; --green-light:#d1fae5;
+  --purple:#7c3aed; --purple-light:#ede9fe;
+  --orange:#d97706; --orange-light:#fef3c7;
+  --bg:#f0f2f7; --card:#fff; --border:#e2e6ee;
+  --text:#111827; --muted:#6b7280; --light:#9ca3af;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;height:100%;font-family:'Nunito',system-ui,sans-serif;background:var(--bg);color:var(--text);overflow:hidden;-webkit-text-size-adjust:100%}
+#app{width:100%;height:100%;display:flex;flex-direction:column;max-width:480px;margin:0 auto;background:var(--bg);position:relative;overflow:hidden}
+.screen{position:absolute;inset:0;display:flex;flex-direction:column;opacity:0;pointer-events:none;transition:opacity .2s;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+.screen.active{opacity:1;pointer-events:all}
+.scroll-body{flex:1;overflow-y:auto;overflow-x:hidden;-webkit-overflow-scrolling:touch}
+.hdr{background:var(--red);padding:calc(env(safe-area-inset-top,0px) + 12px) 16px 12px;display:flex;align-items:center;justify-content:space-between;flex-shrink:0;box-shadow:0 2px 10px rgba(0,0,0,.15)}
+.hdr-left{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
+.hdr-logo{width:38px;height:38px;background:#fff;border-radius:10px;display:flex;align-items:center;justify-content:center;flex-shrink:0;overflow:hidden}
+.hdr-logo img{width:34px;height:34px;object-fit:contain}
+.hdr-title{line-height:1.2;min-width:0}
+.hdr-title h1{font-size:14px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hdr-title p{font-size:10px;color:rgba(255,255,255,.75);margin-top:1px}
+.pts-badge{background:rgba(255,255,255,.2);border:1.5px solid rgba(255,255,255,.45);border-radius:20px;padding:4px 11px;text-align:center;flex-shrink:0}
+.pts-badge .n{font-size:16px;font-weight:900;color:#fff;line-height:1}
+.pts-badge .l{font-size:9px;color:rgba(255,255,255,.8);text-transform:uppercase;letter-spacing:.5px}
+.pad{padding:16px}
+.pad-b{padding-bottom:calc(env(safe-area-inset-bottom,0px) + 16px)}
+.spacer-b{height:calc(env(safe-area-inset-bottom,0px) + 8px);flex-shrink:0}
+.sec-label{font-size:10px;font-weight:800;letter-spacing:.9px;color:var(--light);text-transform:uppercase;margin-bottom:8px}
+.btn-primary{width:100%;padding:16px;background:var(--red);color:#fff;border:none;border-radius:14px;font-size:16px;font-weight:800;font-family:inherit;cursor:pointer;box-shadow:0 4px 16px rgba(204,27,27,.3);transition:transform .1s,background .1s}
+.btn-primary:active{transform:scale(.97);background:var(--red-dark)}
+.btn-blue{background:var(--blue);box-shadow:0 4px 16px rgba(29,86,200,.25)}
+.btn-blue:active{background:#1741a0}
+.btn-secondary{width:100%;padding:14px;background:var(--card);color:var(--blue);border:2px solid var(--blue);border-radius:14px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;transition:transform .1s}
+.btn-secondary:active{transform:scale(.97);background:var(--blue-light)}
+.btn-ghost{width:100%;padding:13px;background:var(--card);color:var(--muted);border:1.5px solid var(--border);border-radius:14px;font-size:14px;font-weight:700;font-family:inherit;cursor:pointer;transition:transform .1s}
+.btn-ghost:active{transform:scale(.97)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:16px}
+.modal-bg{position:absolute;inset:0;background:rgba(0,0,0,.5);display:flex;align-items:center;justify-content:center;z-index:200;opacity:0;pointer-events:none;transition:opacity .2s;padding:24px}
+.modal-bg.show{opacity:1;pointer-events:all}
+.modal-card{background:var(--card);border-radius:20px;padding:26px 22px;width:100%;max-width:340px;text-align:center}
+.modal-icon{font-size:42px;margin-bottom:10px}
+.modal-card h3{font-size:17px;font-weight:900;margin-bottom:6px;color:var(--text)}
+.modal-card p{font-size:13px;color:var(--muted);line-height:1.5;margin-bottom:18px}
+.modal-btns{display:flex;flex-direction:column;gap:8px}
+
+/* HOME */
+.home-hero{background:var(--red);padding:calc(env(safe-area-inset-top,0px) + 22px) 20px 22px;text-align:center;flex-shrink:0}
+.home-hero-logo{width:82px;height:82px;background:rgba(255,255,255,.15);border-radius:50%;margin:0 auto 12px;display:flex;align-items:center;justify-content:center;border:3px solid rgba(255,255,255,.3);overflow:hidden}
+.home-hero-logo img{width:62px;height:62px;object-fit:contain}
+.home-hero h2{font-size:21px;font-weight:900;color:#fff;margin-bottom:3px}
+.home-hero p{font-size:12px;color:rgba(255,255,255,.8);line-height:1.5}
+.active-user-chip{margin:12px 16px 0;background:var(--card);border-radius:12px;border:1px solid var(--border);padding:10px 14px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.user-avatar{width:34px;height:34px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:#fff;flex-shrink:0}
+.menu-list{padding:12px 16px;display:flex;flex-direction:column;gap:9px}
+.menu-btn{background:var(--card);border:1.5px solid var(--border);border-radius:16px;padding:15px 16px;display:flex;align-items:center;gap:12px;cursor:pointer;width:100%;text-align:left;transition:transform .1s;box-shadow:0 2px 6px rgba(0,0,0,.05)}
+.menu-btn:active{transform:scale(.97);box-shadow:none}
+.menu-icon{width:44px;height:44px;border-radius:12px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.menu-icon svg{width:23px;height:23px}
+.mi-red{background:var(--red-light)}.mi-blue{background:var(--blue-light)}.mi-orange{background:var(--orange-light)}.mi-gray{background:#f3f4f6}
+.menu-text .mt{font-size:15px;font-weight:800;color:var(--text)}
+.menu-text .ms{font-size:11px;color:var(--muted);margin-top:2px}
+.menu-arrow{margin-left:auto;color:var(--light);font-size:18px;font-weight:700;flex-shrink:0}
+
+/* PROFILES - LIST STYLE */
+.profile-grid{display:flex;flex-direction:column;gap:0;padding:0 16px 14px}
+.profile-card{background:var(--card);border:1.5px solid var(--border);border-radius:14px;padding:13px 16px;text-align:left;cursor:pointer;transition:border-color .15s,background .15s;display:flex;align-items:center;gap:14px;margin-bottom:8px}
+.profile-card:last-child{margin-bottom:0}
+.profile-card:active{transform:scale(.98)}
+.profile-card.sel{border-color:var(--blue);background:var(--blue-light)}
+.profile-avatar{width:46px;height:46px;border-radius:50%;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:16px;font-weight:900;color:#fff}
+.profile-name{font-size:15px;font-weight:800;color:var(--text);line-height:1.3}
+.profile-hs{font-size:11px;color:var(--light);margin-top:2px}
+.profile-card.sel .profile-name{color:var(--blue)}
+.profile-check{margin-left:auto;width:22px;height:22px;border-radius:50%;background:var(--blue);display:none;align-items:center;justify-content:center;flex-shrink:0}
+.profile-check svg{width:13px;height:13px}
+.profile-card.sel .profile-check{display:flex}
+
+/* CONFIG */
+.num-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.ncard{background:var(--card);border:2px solid var(--border);border-radius:12px;padding:10px 4px;text-align:center;cursor:pointer;transition:border-color .15s}
+.ncard.sel{border-color:var(--blue);background:var(--blue-light)}
+.ncard .n{font-size:20px;font-weight:900;color:var(--blue);line-height:1}
+.ncard .l{font-size:10px;color:var(--light);margin-top:2px}
+.ncard.sel .l{color:var(--blue)}
+.type-list{display:flex;flex-direction:column;gap:7px}
+.tcard{background:var(--card);border:2px solid var(--border);border-radius:12px;padding:12px 13px;cursor:pointer;display:flex;align-items:center;gap:11px;transition:border-color .15s}
+.tcard.sel{border-color:var(--blue);background:var(--blue-light)}
+.tdot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.tcard .tn{font-size:13px;font-weight:700;color:var(--text)}
+.tcard .ts{font-size:11px;color:var(--light);margin-top:1px}
+.tcard.sel .tn{color:var(--blue)}
+
+/* QUIZ */
+.q-progress{background:var(--card);padding:12px 16px 10px;border-bottom:1px solid var(--border);flex-shrink:0}
+.q-progress-row{display:flex;justify-content:space-between;margin-bottom:8px}
+.q-progress-row span{font-size:12px;font-weight:700;color:var(--muted)}
+.prog-track{height:7px;background:#e5e7eb;border-radius:4px;overflow:hidden}
+.prog-fill{height:100%;background:var(--blue);border-radius:4px;transition:width .4s}
+.cat-strip{margin:11px 16px 0;background:var(--card);border-radius:12px;border:1px solid var(--border);padding:10px 13px;display:flex;align-items:center;gap:10px;flex-shrink:0}
+.cat-ic{width:32px;height:32px;border-radius:9px;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.cat-ic svg{width:17px;height:17px}
+.ci-blue{background:var(--blue-light)}.ci-red{background:#fee2e2}.ci-green{background:var(--green-light)}.ci-purple{background:var(--purple-light)}.ci-orange{background:var(--orange-light)}
+.cat-name{font-size:13px;font-weight:800;color:var(--text)}
+.cat-sub{font-size:11px;color:var(--light);margin-top:1px}
+.q-box{margin:10px 16px 0;background:var(--card);border-radius:16px;border:1px solid var(--border);padding:18px 16px;display:flex;align-items:center;justify-content:center;min-height:100px;flex-shrink:0}
+.q-txt{font-size:15px;font-weight:700;color:var(--text);text-align:center;line-height:1.5}
+.q-hi{display:block;font-size:16px;font-weight:900;color:var(--red);margin-top:8px;text-align:center;line-height:1.4;word-break:break-word;overflow-wrap:break-word;hyphens:auto}
+.ans-grid{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:10px 16px 0;flex-shrink:0}
+.ans{border:none;border-radius:14px;padding:0;cursor:pointer;font-family:inherit;transition:transform .1s,opacity .15s}
+.ans:active:not(:disabled){transform:scale(.95)}
+.ans-inner{display:flex;align-items:stretch;min-height:66px;border-radius:14px;overflow:hidden}
+.ans-ltr{width:34px;display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:900;color:#fff;flex-shrink:0}
+.ans-txt{flex:1;padding:8px 10px 8px 8px;font-size:12px;font-weight:700;text-align:left;line-height:1.4;display:flex;align-items:center;word-break:break-word;overflow-wrap:break-word;hyphens:auto;min-width:0}
+.a0 .ans-ltr{background:var(--blue)}.a0{background:var(--blue-light)}.a0 .ans-txt{color:#1e3a8a}
+.a1 .ans-ltr{background:var(--cyan)}.a1{background:var(--cyan-light)}.a1 .ans-txt{color:#164e63}
+.a2 .ans-ltr{background:var(--green)}.a2{background:var(--green-light)}.a2 .ans-txt{color:#065f46}
+.a3 .ans-ltr{background:var(--purple)}.a3{background:var(--purple-light)}.a3 .ans-txt{color:#4c1d95}
+.ans.correct .ans-ltr{background:#15803d}.ans.correct{background:#dcfce7}.ans.correct .ans-txt{color:#14532d;font-weight:800}
+.ans.wrong .ans-ltr{background:#b91c1c}.ans.wrong{background:#fee2e2}.ans.wrong .ans-txt{color:#7f1d1d}
+.ans.dim{opacity:.3}.ans:disabled{cursor:default}
+.fb-box{margin:10px 16px 0;border-radius:12px;padding:11px 14px;font-size:13px;line-height:1.5;font-weight:600;flex-shrink:0;word-break:break-word;overflow-wrap:break-word}
+.fb-ok{background:#dcfce7;border:1px solid #86efac;color:#14532d}
+.fb-bad{background:#fee2e2;border:1px solid #fca5a5;color:#7f1d1d}
+.fb-hd{font-size:14px;font-weight:900;margin-bottom:3px}
+.btn-next-wrap{padding:10px 16px;flex-shrink:0}
+
+/* DUEL BANNERS */
+.player-banner{display:grid;grid-template-columns:1fr 1fr;flex-shrink:0}
+.player-side{padding:12px 14px;text-align:center;transition:opacity .3s}
+.ps-p1{background:var(--blue)}.ps-p2{background:var(--purple)}
+.ps-name{font-size:13px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ps-score{font-size:24px;font-weight:900;color:#fff;line-height:1;margin-top:2px}
+.ps-lbl{font-size:9px;color:rgba(255,255,255,.7);text-transform:uppercase;letter-spacing:.5px}
+.turn-banner{background:var(--card);border-bottom:1px solid var(--border);padding:9px 16px;flex-shrink:0;display:flex;align-items:center;justify-content:space-between}
+.turn-banner span{font-size:13px;font-weight:800;color:var(--text)}
+
+/* RESULT */
+.res-top{background:var(--card);padding:26px 20px 20px;text-align:center;border-bottom:1px solid var(--border);flex-shrink:0}
+.res-ring{width:106px;height:106px;border-radius:50%;border:5px solid var(--blue);background:var(--blue-light);margin:0 auto 13px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.res-ring .pct{font-size:27px;font-weight:900;color:var(--blue);line-height:1}
+.res-ring .lbl{font-size:9px;color:var(--light);letter-spacing:.5px;margin-top:2px}
+.res-title{font-size:19px;font-weight:900;color:var(--text);margin-bottom:4px}
+.res-msg{font-size:13px;color:var(--muted);line-height:1.5}
+.stats-row{display:grid;grid-template-columns:1fr 1fr 1fr;gap:9px;padding:13px 16px 0;flex-shrink:0}
+.sbox{background:var(--card);border-radius:12px;border:1px solid var(--border);padding:12px 8px;text-align:center}
+.sbox .n{font-size:22px;font-weight:900;line-height:1}
+.sbox .l{font-size:11px;color:var(--light);margin-top:3px}
+.sbox.ok .n{color:#15803d}.sbox.bad .n{color:#b91c1c}.sbox.pts .n{color:var(--blue)}
+.res-btns{padding:12px 16px 0;display:flex;flex-direction:column;gap:9px;flex-shrink:0}
+.hs-badge{margin:12px 16px 0;background:var(--orange-light);border:1px solid #fcd34d;border-radius:12px;padding:10px 14px;font-size:13px;font-weight:700;color:#92400e;text-align:center;flex-shrink:0}
+
+/* DUEL RESULT */
+.duel-winner-box{background:var(--card);border:1px solid var(--border);border-radius:16px;margin:14px 16px 0;padding:20px;text-align:center;flex-shrink:0}
+.duel-scores-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin:12px 16px 0;flex-shrink:0}
+.dscore-box{background:var(--card);border-radius:14px;border:1px solid var(--border);padding:14px 10px;text-align:center}
+.dscore-box.win{border-color:var(--blue);background:var(--blue-light)}
+.dsn{font-size:12px;font-weight:800;color:var(--muted);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dss{font-size:28px;font-weight:900;color:var(--blue)}
+.dspc{font-size:11px;color:var(--light);margin-top:2px}
+
+/* HIGHSCORE */
+.hs-row{display:flex;align-items:center;gap:12px;padding:13px 16px;border-bottom:1px solid var(--border)}
+.hs-row:last-child{border-bottom:none}
+.hs-rank{font-size:18px;font-weight:900;width:28px;text-align:center;flex-shrink:0;color:var(--light)}
+.hs-rank.r1{color:#f59e0b}.hs-rank.r2{color:#9ca3af}.hs-rank.r3{color:#b45309}
+.hs-av{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#fff;flex-shrink:0}
+
+/* SETTINGS */
+.settings-group{background:var(--card);border-radius:14px;border:1px solid var(--border);overflow:hidden;margin-bottom:14px}
+.settings-row{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid var(--border)}
+.settings-row:last-child{border-bottom:none}
+.sr-label{font-size:14px;font-weight:700;color:var(--text)}
+.sr-sub{font-size:11px;color:var(--light);margin-top:2px}
+.sr-val{font-size:13px;color:var(--muted);font-weight:600}
+.pin-input{border:1.5px solid var(--border);border-radius:10px;padding:9px 12px;font-size:16px;font-family:inherit;width:90px;text-align:center;color:var(--text);background:var(--bg);outline:none}
+.pin-input:focus{border-color:var(--blue)}
+
+/* HANDOVER */
+.handover-screen{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;text-align:center;background:var(--blue)}
+
+/* LOGIN */
+.login-wrap{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:32px 24px;background:var(--bg)}
+.login-card{background:var(--card);border:1px solid var(--border);border-radius:20px;padding:28px 24px;width:100%;max-width:360px}
+.login-logo{width:80px;height:80px;background:var(--red-light);border-radius:50%;margin:0 auto 16px;display:flex;align-items:center;justify-content:center;border:2px solid #fecaca;overflow:hidden}
+.login-logo img{width:60px;height:60px;object-fit:contain}
+.login-title{font-size:20px;font-weight:900;color:var(--text);text-align:center;margin-bottom:4px}
+.login-sub{font-size:13px;color:var(--muted);text-align:center;margin-bottom:24px;line-height:1.5}
+.form-field{margin-bottom:12px}
+.form-label{font-size:11px;font-weight:800;color:var(--light);text-transform:uppercase;letter-spacing:.7px;margin-bottom:5px;display:block}
+.form-input{width:100%;padding:13px 14px;border:1.5px solid var(--border);border-radius:12px;font-size:15px;font-family:inherit;color:var(--text);background:var(--card);outline:none;transition:border-color .15s}
+.form-input:focus{border-color:var(--blue)}
+.form-err{font-size:13px;color:#7f1d1d;background:#fee2e2;border:1.5px solid #fca5a5;border-radius:10px;padding:11px 14px;margin-bottom:14px;font-weight:700;display:none;line-height:1.5;text-align:center;}
+@keyframes shake{0%,100%{transform:translateX(0)}20%,60%{transform:translateX(-6px)}40%,80%{transform:translateX(6px)}}
+.login-toggle{text-align:center;margin-top:14px;font-size:13px;color:var(--muted)}
+.login-toggle button{background:none;border:none;color:var(--blue);font-weight:800;cursor:pointer;font-family:inherit;font-size:13px;}
+
+/* LOADING OVERLAY */
+.loading-overlay{position:absolute;inset:0;background:rgba(255,255,255,.92);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:300;gap:14px}
+.spinner{width:40px;height:40px;border:4px solid var(--border);border-top-color:var(--red);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div id="app">
+
+<!-- ══ LOADING ══ -->
+<div id="s-loading" class="screen active">
+  <div class="loading-overlay" style="position:absolute;inset:0;background:var(--red);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;">
+    <div style="width:80px;height:80px;background:rgba(255,255,255,.15);border-radius:50%;display:flex;align-items:center;justify-content:center;border:3px solid rgba(255,255,255,.3);overflow:hidden;">
+      <img src="https://www.feuerwehr-schweich.de/pics/Logo Stadt.JPG" alt="FW" style="width:60px;height:60px;object-fit:contain;"
+        onerror="this.outerHTML='<svg width=54 height=54 viewBox=\'0 0 54 54\' fill=\'none\'><path d=\'M27 5L46 22H39V49H15V22H8L27 5Z\' fill=\'white\'/></svg>'">
+    </div>
+    <div style="font-size:20px;font-weight:900;color:#fff;">FW Schweich Quiz</div>
+    <div class="spinner" style="border-color:rgba(255,255,255,.3);border-top-color:#fff;"></div>
+  </div>
+</div>
+
+<!-- ══ LOGIN ══ -->
+<div id="s-login" class="screen">
+  <div class="login-wrap">
+    <div class="login-card">
+      <div class="login-logo">
+        <img src="https://www.feuerwehr-schweich.de/pics/Logo Stadt.JPG" alt="FW"
+          onerror="this.outerHTML='<svg width=48 height=48 viewBox=\'0 0 48 48\' fill=\'none\'><path d=\'M24 4L41 18H35V44H13V18H7L24 4Z\' fill=\'%23cc1b1b\'/></svg>'">
+      </div>
+      <div class="login-title" id="login-title">Willkommen!</div>
+      <div class="login-sub" id="login-sub">Melde dich mit deiner Feuerwehr-E-Mail an.</div>
+
+      <div class="form-err" id="login-err"></div>
+
+      <div class="form-field">
+        <label class="form-label">E-Mail</label>
+        <input class="form-input" id="login-email" type="email" placeholder="deine@email.de" autocomplete="email" inputmode="email">
+      </div>
+      <div class="form-field" id="pw-field">
+        <label class="form-label">Passwort</label>
+        <input class="form-input" id="login-pw" type="password" placeholder="Passwort" autocomplete="current-password">
+      </div>
+      <div class="form-field" id="pw2-field" style="display:none;">
+        <label class="form-label">Passwort bestaetigen</label>
+        <input class="form-input" id="login-pw2" type="password" placeholder="Passwort wiederholen">
+      </div>
+
+      <button class="btn-primary" id="login-btn" onclick="doLogin()" style="margin-top:4px;">Anmelden</button>
+
+      <div class="login-toggle">
+        <span id="toggle-text">Noch kein Passwort?</span>
+        <button onclick="toggleLoginMode()" id="toggle-btn">Registrieren</button>
+      </div>
+    </div>
+    <div style="font-size:10px;color:var(--light);margin-top:16px;text-align:center;">Nur fuer Mitglieder der FF Schweich</div>
+  </div>
+</div>
+
+<!-- ══ HOME ══ -->
+<div id="s-home" class="screen">
+  <div class="home-hero">
+    <div class="home-hero-logo">
+      <img src="https://www.feuerwehr-schweich.de/pics/Logo Stadt.JPG" alt="FW"
+        onerror="this.outerHTML='<svg width=60 height=60 viewBox=\'0 0 60 60\' fill=\'none\'><path d=\'M30 5L52 24H44V55H16V24H8L30 5Z\' fill=\'white\'/></svg>'">
+    </div>
+    <h2>FW Schweich Quiz</h2>
+    <p>Freiwillige Feuerwehr Schweich</p>
+  </div>
+  <div class="active-user-chip">
+    <div class="user-avatar" id="home-av" style="background:#9ca3af;">?</div>
+    <div style="flex:1;min-width:0;">
+      <div style="font-size:13px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;" id="home-uname">Nicht angemeldet</div>
+      <div style="font-size:11px;color:var(--light);margin-top:1px;" id="home-usub">Bitte anmelden</div>
+    </div>
+    <button onclick="doLogout()" style="background:#fee2e2;border:none;color:#b91c1c;font-size:11px;font-weight:800;padding:6px 11px;border-radius:8px;cursor:pointer;font-family:inherit;flex-shrink:0;">Abmelden</button>
+  </div>
+  <div class="menu-list">
+    <button class="menu-btn" onclick="onSolo()">
+      <div class="menu-icon mi-red"><svg fill="none" stroke="#cc1b1b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/></svg></div>
+      <div class="menu-text"><div class="mt">Solo-Quiz</div><div class="ms">Alleine Wissen testen</div></div>
+      <div class="menu-arrow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></div>
+    </button>
+    <button class="menu-btn" style="opacity:.45;cursor:default;" disabled>
+      <div class="menu-icon mi-blue"><svg fill="none" stroke="#1d56c8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg></div>
+      <div class="menu-text"><div class="mt">Quiz-Duell</div><div class="ms">Gegen einen Kameraden antreten</div></div>
+      <div style="margin-left:auto;background:#f3f4f6;color:#9ca3af;font-size:10px;font-weight:800;padding:4px 9px;border-radius:20px;white-space:nowrap;flex-shrink:0;">In Arbeit</div>
+    </button>
+    <button class="menu-btn" onclick="goTo('s-highscore')">
+      <div class="menu-icon mi-orange"><svg fill="none" stroke="#d97706" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"/></svg></div>
+      <div class="menu-text"><div class="mt">Highscore</div><div class="ms">Rangliste aller Mitglieder</div></div>
+      <div class="menu-arrow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></div>
+    </button>
+    <button class="menu-btn" onclick="goTo('s-settings')">
+      <div class="menu-icon mi-gray"><svg fill="none" stroke="#6b7280" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg></div>
+      <div class="menu-text"><div class="mt">Einstellungen</div><div class="ms">Highscore zuruecksetzen</div></div>
+      <div class="menu-arrow"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></div>
+    </button>
+  </div>
+  <div style="text-align:center;padding:8px 16px;padding-bottom:calc(env(safe-area-inset-bottom,0px)+14px);font-size:10px;color:var(--light);">Florian Schweich &middot; immer einsatzbereit</div>
+</div>
+
+<!-- ══ PROFILE SELECT ══ -->
+<div id="s-profiles" class="screen">
+  <div class="hdr">
+    <div class="hdr-left">
+      <button onclick="goTo('s-home')" style="background:rgba(255,255,255,.2);border:none;color:#fff;font-size:20px;font-weight:900;cursor:pointer;width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:inherit;flex-shrink:0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <div class="hdr-title"><h1 id="prof-hdr-title">Profil waehlen</h1><p id="prof-hdr-sub">Wer spielt?</p></div>
+    </div>
+  </div>
+  <div class="scroll-body">
+    <div style="padding:14px 16px 4px;font-size:13px;color:var(--muted);font-weight:600;" id="prof-hint">Waehle dein Profil:</div>
+    <div class="profile-grid" id="profile-grid"></div>
+    <div class="pad pad-b">
+      <button class="btn-primary btn-blue" id="prof-confirm-btn" onclick="confirmProfile()" disabled style="opacity:.4;">Bestaetigen</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ SOLO CONFIG ══ -->
+<div id="s-config" class="screen">
+  <div class="hdr">
+    <div class="hdr-left">
+      <button onclick="goTo('s-home')" style="background:rgba(255,255,255,.2);border:none;color:#fff;font-size:20px;font-weight:900;cursor:pointer;width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:inherit;flex-shrink:0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <div class="hdr-title"><h1>Solo-Quiz</h1><p>Einstellungen</p></div>
+    </div>
+  </div>
+  <div class="scroll-body">
+    <div class="pad" style="display:flex;flex-direction:column;gap:18px;">
+      <div>
+        <div class="sec-label">Anzahl Fragen</div>
+        <div class="num-grid" id="solo-num-grid">
+          <div class="ncard" data-v="5" onclick="pN(this,'solo')"><div class="n">5</div><div class="l">Schnell</div></div>
+          <div class="ncard sel" data-v="10" onclick="pN(this,'solo')"><div class="n">10</div><div class="l">Standard</div></div>
+          <div class="ncard" data-v="20" onclick="pN(this,'solo')"><div class="n">20</div><div class="l">Profi</div></div>
+          <div class="ncard" data-v="999" onclick="pN(this,'solo')"><div class="n">inf</div><div class="l">Alle</div></div>
+        </div>
+      </div>
+      <div>
+        <div class="sec-label">Fragetyp</div>
+        <div class="type-list" id="solo-type-list">
+          <div class="tcard sel" data-v="all" onclick="pT(this,'solo')"><div class="tdot" style="background:#f59e0b"></div><div><div class="tn">Gemischt</div><div class="ts">Alle Fragetypen</div></div></div>
+          <div class="tcard" data-v="veh" onclick="pT(this,'solo')"><div class="tdot" style="background:var(--blue)"></div><div><div class="tn">Auf welchem Fahrzeug?</div><div class="ts">Geraet dem Fahrzeug zuordnen</div></div></div>
+          <div class="tcard" data-v="not" onclick="pT(this,'solo')"><div class="tdot" style="background:#b91c1c"></div><div><div class="tn">Was liegt NICHT drauf?</div><div class="ts">Das falsche Geraet finden</div></div></div>
+          <div class="tcard" data-v="lager" onclick="pT(this,'solo')"><div class="tdot" style="background:var(--purple)"></div><div><div class="tn">In welchem Lagerplatz?</div><div class="ts">Lagerplatz zuordnen</div></div></div>
+          <div class="tcard" data-v="custom" onclick="pT(this,'solo')"><div class="tdot" style="background:#d97706"></div><div><div class="tn">Eigene Fragen</div><div class="ts">Nur selbst erstellte Fragen</div></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="pad pad-b"><button class="btn-primary" onclick="startSolo()">Quiz starten</button></div>
+  </div>
+</div>
+
+<!-- ══ DUEL CONFIG ══ -->
+<div id="s-duel-config" class="screen">
+  <div class="hdr">
+    <div class="hdr-left">
+      <button onclick="goTo('s-home')" style="background:rgba(255,255,255,.2);border:none;color:#fff;font-size:20px;font-weight:900;cursor:pointer;width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:inherit;flex-shrink:0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <div class="hdr-title"><h1>Quiz-Duell</h1><p>Einstellungen</p></div>
+    </div>
+  </div>
+  <div class="scroll-body">
+    <div class="pad" style="display:flex;flex-direction:column;gap:16px;">
+      <div style="background:var(--blue-light);border-radius:12px;border:1px solid #bfdbfe;padding:12px 14px;font-size:13px;color:#1e3a8a;font-weight:600;line-height:1.5;">
+        Spieler 1: <strong id="duel-p1-label">–</strong><br>Waehle Spieler 2:
+      </div>
+      <div>
+        <div class="sec-label">Spieler 2</div>
+        <div class="profile-grid" id="duel-p2-grid"></div>
+      </div>
+      <div>
+        <div class="sec-label">Fragen je Spieler</div>
+        <div class="num-grid" id="duel-num-grid">
+          <div class="ncard" data-v="5" onclick="pN(this,'duel')"><div class="n">5</div><div class="l">Schnell</div></div>
+          <div class="ncard sel" data-v="10" onclick="pN(this,'duel')"><div class="n">10</div><div class="l">Standard</div></div>
+          <div class="ncard" data-v="15" onclick="pN(this,'duel')"><div class="n">15</div><div class="l">Profi</div></div>
+          <div class="ncard" data-v="20" onclick="pN(this,'duel')"><div class="n">20</div><div class="l">Experte</div></div>
+        </div>
+      </div>
+      <div>
+        <div class="sec-label">Fragetyp</div>
+        <div class="type-list" id="duel-type-list">
+          <div class="tcard sel" data-v="all" onclick="pT(this,'duel')"><div class="tdot" style="background:#f59e0b"></div><div><div class="tn">Gemischt</div></div></div>
+          <div class="tcard" data-v="veh" onclick="pT(this,'duel')"><div class="tdot" style="background:var(--blue)"></div><div><div class="tn">Auf welchem Fahrzeug?</div></div></div>
+          <div class="tcard" data-v="not" onclick="pT(this,'duel')"><div class="tdot" style="background:#b91c1c"></div><div><div class="tn">Was liegt NICHT drauf?</div></div></div>
+          <div class="tcard" data-v="lager" onclick="pT(this,'duel')"><div class="tdot" style="background:var(--purple)"></div><div><div class="tn">In welchem Lagerplatz?</div></div></div>
+          <div class="tcard" data-v="custom" onclick="pT(this,'duel')"><div class="tdot" style="background:#d97706"></div><div><div class="tn">Eigene Fragen</div></div></div>
+        </div>
+      </div>
+    </div>
+    <div class="pad pad-b"><button class="btn-primary btn-blue" id="duel-start-btn" onclick="startDuel()" disabled style="opacity:.4;">Duell starten</button></div>
+  </div>
+</div>
+
+<!-- ══ QUIZ ══ -->
+<div id="s-quiz" class="screen">
+  <!-- Solo header -->
+  <div id="qhdr-solo" style="background:var(--red);padding:calc(env(safe-area-inset-top,0px)+12px) 16px 12px;display:grid;grid-template-columns:1fr auto auto;align-items:center;gap:8px;flex-shrink:0;box-shadow:0 2px 10px rgba(0,0,0,.15);">
+    <div style="line-height:1.2;min-width:0;">
+      <div style="font-size:14px;font-weight:800;color:#fff;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">Solo-Quiz</div>
+      <div style="font-size:10px;color:rgba(255,255,255,.75);margin-top:1px;">Frage <span id="hdr-qn">1</span> von <span id="hdr-qt">10</span></div>
+    </div>
+    <button onclick="showQuit()" style="background:rgba(255,255,255,.18);border:1.5px solid rgba(255,255,255,.5);color:#fff;font-size:12px;font-weight:800;cursor:pointer;padding:7px 13px;border-radius:9px;font-family:inherit;white-space:nowrap;flex-shrink:0;">Aufgeben</button>
+    <div class="pts-badge"><div class="n" id="hpts">0</div><div class="l">Punkte</div></div>
+  </div>
+  <!-- Duel header -->
+  <div id="qhdr-duel" style="display:none;flex-shrink:0;">
+    <div class="player-banner">
+      <div class="player-side ps-p1" id="dp1-side"><div class="ps-name" id="dp1-name">P1</div><div class="ps-score" id="dp1-score">0</div><div class="ps-lbl">Punkte</div></div>
+      <div class="player-side ps-p2" id="dp2-side" style="opacity:.45;"><div class="ps-name" id="dp2-name">P2</div><div class="ps-score" id="dp2-score">0</div><div class="ps-lbl">Punkte</div></div>
+    </div>
+    <div class="turn-banner">
+      <span id="turn-lbl">P1 ist dran</span>
+      <button onclick="showQuit()" style="background:transparent;border:none;color:var(--muted);font-size:12px;font-weight:800;cursor:pointer;font-family:inherit;">Aufgeben</button>
+    </div>
+  </div>
+  <!-- Progress -->
+  <div class="q-progress">
+    <div class="q-progress-row"><span id="qcnt">Frage 1 von 10</span><span id="qpts-lbl">0 Punkte</span></div>
+    <div class="prog-track"><div class="prog-fill" id="prog" style="width:0%"></div></div>
+  </div>
+  <!-- Content -->
+  <div class="scroll-body" id="quiz-scroll">
+    <div class="cat-strip"><div class="cat-ic ci-blue" id="cat-ic"><svg viewBox="0 0 24 24" fill="none"><path d="M12 2L22 12H18V22H6V12H2L12 2Z" fill="#1d56c8"/></svg></div><div><div class="cat-name" id="cat-name">Fahrzeug gesucht</div><div class="cat-sub" id="cat-sub">Welchem Fahrzeug gehoert das Geraet?</div></div></div>
+    <div class="q-box"><div style="width:100%;"><div class="q-txt" id="q-txt"></div><span class="q-hi" id="q-hi"></span></div></div>
+    <div class="ans-grid" id="ans-grid"></div>
+    <div class="fb-box" id="fb" style="display:none;"></div>
+    <div class="btn-next-wrap" id="next-wrap" style="display:none;"><button class="btn-primary" id="btn-next" onclick="nextQ()">Weiter</button></div>
+    <div class="spacer-b"></div>
+  </div>
+</div>
+
+<!-- ══ HANDOVER ══ -->
+<div id="s-handover" class="screen">
+  <div class="handover-screen">
+    <div style="margin-bottom:14px;"><svg width="60" height="60" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,.9)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="2" width="14" height="20" rx="2"/><line x1="12" y1="18" x2="12.01" y2="18"/></svg></div>
+    <div style="font-size:21px;font-weight:900;color:#fff;margin-bottom:8px;" id="ho-title">Gut gemacht!</div>
+    <div style="font-size:14px;color:rgba(255,255,255,.85);line-height:1.6;margin-bottom:28px;" id="ho-msg">Gib das Geraet weiter!</div>
+    <div style="background:rgba(255,255,255,.15);border-radius:18px;padding:14px 28px;margin-bottom:28px;">
+      <div style="font-size:28px;font-weight:900;color:#fff;" id="ho-score">8 / 10</div>
+      <div style="font-size:11px;color:rgba(255,255,255,.7);margin-top:2px;">Dein Ergebnis</div>
+    </div>
+    <button onclick="startP2()" style="background:#fff;color:var(--blue);border:none;border-radius:14px;padding:16px 32px;font-size:16px;font-weight:800;cursor:pointer;font-family:inherit;">Weiter als <span id="ho-p2name">Spieler 2</span></button>
+  </div>
+</div>
+
+<!-- ══ SOLO RESULT ══ -->
+<div id="s-result" class="screen">
+  <div class="hdr"><div class="hdr-left"><div class="hdr-title"><h1>Ergebnis</h1><p>Quiz abgeschlossen</p></div></div></div>
+  <div class="scroll-body">
+    <div class="res-top">
+      <div class="res-ring"><div class="pct" id="r-pct">-</div><div class="lbl">ERGEBNIS</div></div>
+      <div class="res-title" id="r-title">Super!</div>
+      <div class="res-msg" id="r-msg"></div>
+    </div>
+    <div class="stats-row">
+      <div class="sbox ok"><div class="n" id="r-ok">-</div><div class="l">Richtig</div></div>
+      <div class="sbox bad"><div class="n" id="r-bad">-</div><div class="l">Falsch</div></div>
+      <div class="sbox pts"><div class="n" id="r-sc">-</div><div class="l">Punkte</div></div>
+    </div>
+    <div class="hs-badge" id="r-hs-badge" style="display:none;"></div>
+    <div class="res-btns pad-b">
+      <button class="btn-primary" onclick="startSolo()">Nochmal spielen</button>
+      <button class="btn-secondary" onclick="goTo('s-config')">Einstellungen</button>
+      <button class="btn-ghost" onclick="goTo('s-home')">Startbildschirm</button>
+    </div>
+    <div class="spacer-b"></div>
+  </div>
+</div>
+
+<!-- ══ DUEL RESULT ══ -->
+<div id="s-duel-result" class="screen">
+  <div class="hdr"><div class="hdr-left"><div class="hdr-title"><h1>Duell-Ergebnis</h1></div></div></div>
+  <div class="scroll-body">
+    <div class="duel-winner-box">
+      <div style="margin-bottom:10px;" id="dr-trophy"><svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H3V4h18v5h-3"/><path d="M12 15c-3.31 0-6-2.69-6-6V4h12v5c0 3.31-2.69 6-6 6z"/><path d="M8 21h8"/><path d="M12 15v6"/></svg></div>
+      <div style="font-size:20px;font-weight:900;color:var(--text);" id="dr-winner">–</div>
+      <div style="font-size:13px;color:var(--muted);margin-top:4px;" id="dr-sub">gewinnt!</div>
+    </div>
+    <div class="duel-scores-grid">
+      <div class="dscore-box" id="dr-box1"><div class="dsn" id="dr-n1">–</div><div class="dss" id="dr-s1">–</div><div class="dspc" id="dr-pc1">–</div></div>
+      <div class="dscore-box" id="dr-box2"><div class="dsn" id="dr-n2">–</div><div class="dss" id="dr-s2">–</div><div class="dspc" id="dr-pc2">–</div></div>
+    </div>
+    <div class="hs-badge" id="dr-hs-badge" style="display:none;"></div>
+    <div class="res-btns pad-b">
+      <button class="btn-primary btn-blue" onclick="onDuel()">Revanche</button>
+      <button class="btn-ghost" onclick="goTo('s-home')">Startbildschirm</button>
+    </div>
+    <div class="spacer-b"></div>
+  </div>
+</div>
+
+<!-- ══ HIGHSCORE ══ -->
+<div id="s-highscore" class="screen">
+  <div class="hdr">
+    <div class="hdr-left">
+      <button onclick="goTo('s-home')" style="background:rgba(255,255,255,.2);border:none;color:#fff;font-size:20px;font-weight:900;cursor:pointer;width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:inherit;flex-shrink:0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <div class="hdr-title"><h1>Highscore</h1><p>Rangliste</p></div>
+    </div>
+  </div>
+  <div class="scroll-body">
+    <div style="margin:14px 16px 0;" class="card" id="hs-list"></div>
+    <div style="padding:12px 16px;font-size:11px;color:var(--light);text-align:center;">1 Punkt pro richtig beantworteter Frage.</div>
+    <div class="spacer-b"></div>
+  </div>
+</div>
+
+<!-- ══ SETTINGS ══ -->
+<div id="s-settings" class="screen">
+  <div class="hdr">
+    <div class="hdr-left">
+      <button onclick="goTo('s-home')" style="background:rgba(255,255,255,.2);border:none;color:#fff;font-size:20px;font-weight:900;cursor:pointer;width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:inherit;flex-shrink:0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <div class="hdr-title"><h1>Einstellungen</h1></div>
+    </div>
+  </div>
+  <div class="scroll-body">
+    <div class="pad" style="display:flex;flex-direction:column;gap:14px;">
+      <div class="settings-group">
+        <div class="settings-row"><div><div class="sr-label">Version</div><div class="sr-sub">FW Schweich Quiz</div></div><div class="sr-val">1.0</div></div>
+        <div class="settings-row"><div><div class="sr-label">Fahrzeuge</div></div><div class="sr-val">6</div></div>
+        <div class="settings-row"><div><div class="sr-label">Geraete gesamt</div></div><div class="sr-val" id="s-item-count">–</div></div>
+        <div class="settings-row"><div><div class="sr-label">Mitglieder</div></div><div class="sr-val">5</div></div>
+      </div>
+
+      <!-- Profil bearbeiten — nur wenn eingeloggt -->
+      <div class="settings-group" id="s-profile-section" style="display:none;">
+        <div class="settings-row" style="cursor:pointer;" onclick="goTo('s-edit-profile')">
+          <div style="display:flex;align-items:center;gap:12px;">
+            <div id="s-profile-av" style="width:40px;height:40px;border-radius:50%;background:#9ca3af;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:900;color:#fff;flex-shrink:0;">?</div>
+            <div>
+              <div class="sr-label" style="color:var(--blue);display:flex;align-items:center;gap:6px;">
+                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#1d56c8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                Profil bearbeiten
+              </div>
+              <div class="sr-sub" id="s-profile-email" style="margin-top:2px;">Anmeldename und Passwort aendern</div>
+            </div>
+          </div>
+          <div style="color:var(--light);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></div>
+        </div>
+      </div>
+      <div class="settings-group">
+        <div class="settings-row" style="cursor:pointer;" onclick="goTo('s-create-q')">
+          <div>
+            <div class="sr-label" style="color:var(--blue);display:flex;align-items:center;gap:6px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#1d56c8" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/></svg>
+              Frage erstellen
+            </div>
+            <div class="sr-sub" style="margin-top:4px;">Eigene Quiz-Frage mit 4 Antworten anlegen</div>
+          </div>
+          <div style="color:var(--light);"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M9 18l6-6-6-6"/></svg></div>
+        </div>
+      </div>
+      <div class="settings-group">
+        <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:10px;">
+          <div>
+            <div class="sr-label" style="color:var(--red);display:flex;align-items:center;gap:6px;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#cc1b1b" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"/><line x1="12" y1="9" x2="12" y2="13"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              Highscore zuruecksetzen
+            </div>
+            <div class="sr-sub" style="margin-top:4px;">Alle Punkte aller Mitglieder auf 0 setzen.</div>
+          </div>
+          <div style="display:flex;gap:10px;align-items:center;width:100%;">
+            <input type="password" class="pin-input" id="reset-pin" placeholder="Passwort" maxlength="6" inputmode="numeric" autocomplete="off">
+            <button onclick="tryReset()" style="flex:1;padding:11px;background:var(--red);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;">Zuruecksetzen</button>
+          </div>
+          <div id="reset-msg" style="font-size:12px;font-weight:700;display:none;width:100%;text-align:center;padding:6px;border-radius:8px;"></div>
+        </div>
+      </div>
+    </div>
+    <div class="spacer-b"></div>
+  </div>
+</div>
+
+<!-- ══ PROFIL BEARBEITEN ══ -->
+<div id="s-edit-profile" class="screen">
+  <div class="hdr">
+    <div class="hdr-left">
+      <button onclick="goTo('s-settings')" style="background:rgba(255,255,255,.2);border:none;color:#fff;font-size:20px;font-weight:900;cursor:pointer;width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:inherit;flex-shrink:0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <div class="hdr-title"><h1>Profil bearbeiten</h1><p id="ep-email-hdr">Mein Profil</p></div>
+    </div>
+  </div>
+  <div class="scroll-body">
+    <div class="pad" style="display:flex;flex-direction:column;gap:18px;">
+
+      <!-- Aktuelles Profil -->
+      <div style="background:var(--card);border-radius:16px;border:1px solid var(--border);padding:16px;display:flex;align-items:center;gap:14px;">
+        <div id="ep-avatar" style="width:52px;height:52px;border-radius:50%;background:#9ca3af;display:flex;align-items:center;justify-content:center;font-size:18px;font-weight:900;color:#fff;flex-shrink:0;">?</div>
+        <div>
+          <div style="font-size:16px;font-weight:800;color:var(--text);" id="ep-name">–</div>
+          <div style="font-size:12px;color:var(--muted);margin-top:2px;" id="ep-email">–</div>
+        </div>
+      </div>
+
+      <!-- Anmeldename aendern -->
+      <div>
+        <div class="sec-label">Anzeigename aendern</div>
+        <div class="settings-group">
+          <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:10px;">
+            <div class="sr-sub">Dieser Name erscheint im Highscore und im Duell.</div>
+            <input type="text" id="ep-new-name" class="form-input" placeholder="Neuer Anzeigename..." autocomplete="off">
+            <button onclick="saveProfileName()" style="width:100%;padding:12px;background:var(--blue);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;">Name speichern</button>
+            <div id="ep-name-msg" style="display:none;font-size:12px;font-weight:700;width:100%;text-align:center;padding:6px;border-radius:8px;"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Passwort aendern -->
+      <div>
+        <div class="sec-label">Passwort aendern</div>
+        <div class="settings-group">
+          <div class="settings-row" style="flex-direction:column;align-items:flex-start;gap:10px;">
+            <div class="sr-sub">Aktuelles Passwort zur Bestaetigung eingeben.</div>
+            <input type="password" id="ep-cur-pw" class="form-input" placeholder="Aktuelles Passwort" autocomplete="current-password">
+            <input type="password" id="ep-new-pw" class="form-input" placeholder="Neues Passwort (min. 6 Zeichen)" autocomplete="new-password" style="margin-top:8px;">
+            <input type="password" id="ep-new-pw2" class="form-input" placeholder="Neues Passwort bestaetigen" autocomplete="new-password" style="margin-top:8px;">
+            <button onclick="saveProfilePw()" style="width:100%;padding:12px;background:var(--blue);color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:800;cursor:pointer;font-family:inherit;">Passwort aendern</button>
+            <div id="ep-pw-msg" style="display:none;font-size:12px;font-weight:700;width:100%;text-align:center;padding:6px;border-radius:8px;"></div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+    <div class="spacer-b"></div>
+  </div>
+</div>
+
+<!-- ══ FRAGE ERSTELLEN ══ -->
+<div id="s-create-q" class="screen">
+  <div class="hdr">
+    <div class="hdr-left">
+      <button onclick="goTo('s-settings')" style="background:rgba(255,255,255,.2);border:none;color:#fff;font-size:20px;font-weight:900;cursor:pointer;width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-family:inherit;flex-shrink:0;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <div class="hdr-title"><h1>Frage erstellen</h1><p>Eigene Fragen anlegen</p></div>
+    </div>
+  </div>
+  <div class="scroll-body">
+    <div class="pad" style="display:flex;flex-direction:column;gap:14px;">
+
+      <!-- Kategorie -->
+      <div>
+        <div class="sec-label">Kategorie</div>
+        <div class="settings-group">
+          <div class="settings-row" style="padding:10px 16px;">
+            <select id="cq-kategorie" style="width:100%;border:none;background:transparent;font-family:inherit;font-size:14px;font-weight:700;color:var(--text);outline:none;cursor:pointer;">
+              <option value="">-- Kategorie waehlen --</option>
+              <option value="Allgemein">Allgemein</option>
+              <option value="Fahrzeugkunde">Fahrzeugkunde</option>
+              <option value="Geraetekunde">Geraetekunde</option>
+              <option value="Einsatztaktik">Einsatztaktik</option>
+              <option value="Sicherheit">Sicherheit</option>
+              <option value="Sonstiges">Sonstiges</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <!-- Frage -->
+      <div>
+        <div class="sec-label">Frage</div>
+        <div class="settings-group">
+          <div class="settings-row" style="padding:12px 16px;">
+            <textarea id="cq-frage" placeholder="Fragentext eingeben..." style="width:100%;border:none;background:transparent;font-family:inherit;font-size:14px;color:var(--text);outline:none;resize:none;min-height:70px;line-height:1.5;"></textarea>
+          </div>
+        </div>
+      </div>
+
+      <!-- Richtige Antwort -->
+      <div>
+        <div class="sec-label" style="color:#15803d;">Richtige Antwort</div>
+        <div class="settings-group">
+          <div class="settings-row" style="padding:12px 16px;border-left:3px solid #15803d;border-radius:0 14px 14px 0;">
+            <input id="cq-richtig" type="text" placeholder="Richtige Antwort eingeben..." style="width:100%;border:none;background:transparent;font-family:inherit;font-size:14px;color:var(--text);outline:none;">
+          </div>
+        </div>
+      </div>
+
+      <!-- Falsche Antworten -->
+      <div>
+        <div class="sec-label" style="color:#b91c1c;">3 falsche Antworten</div>
+        <div class="settings-group">
+          <div class="settings-row" style="padding:12px 16px;border-left:3px solid #b91c1c;border-radius:0 0 0 0;">
+            <input id="cq-f1" type="text" placeholder="Falsche Antwort 1..." style="width:100%;border:none;background:transparent;font-family:inherit;font-size:14px;color:var(--text);outline:none;">
+          </div>
+          <div class="settings-row" style="padding:12px 16px;border-left:3px solid #b91c1c;border-radius:0 0 0 0;">
+            <input id="cq-f2" type="text" placeholder="Falsche Antwort 2..." style="width:100%;border:none;background:transparent;font-family:inherit;font-size:14px;color:var(--text);outline:none;">
+          </div>
+          <div class="settings-row" style="padding:12px 16px;border-left:3px solid #b91c1c;border-radius:0 0 14px 0;">
+            <input id="cq-f3" type="text" placeholder="Falsche Antwort 3..." style="width:100%;border:none;background:transparent;font-family:inherit;font-size:14px;color:var(--text);outline:none;">
+          </div>
+        </div>
+      </div>
+
+      <!-- Gespeicherte Fragen -->
+      <div>
+        <div class="sec-label" style="display:flex;justify-content:space-between;align-items:center;">
+          <span>Gespeicherte Fragen (<span id="cq-count">0</span>)</span>
+          <button onclick="deleteAllCustomQ()" style="background:none;border:none;color:var(--red);font-size:11px;font-weight:700;cursor:pointer;font-family:inherit;">Alle loeschen</button>
+        </div>
+        <div class="settings-group" id="cq-list" style="max-height:240px;overflow-y:auto;"></div>
+      </div>
+
+      <div id="cq-msg" style="display:none;font-size:13px;font-weight:700;text-align:center;padding:10px;border-radius:10px;"></div>
+    </div>
+
+    <div class="pad pad-b">
+      <button class="btn-primary btn-blue" onclick="saveCustomQuestion()">Frage speichern</button>
+    </div>
+    <div class="spacer-b"></div>
+  </div>
+</div>
+
+<!-- ══ MODALS ══ -->
+<div class="modal-bg" id="modal-quit" onclick="closeQuit()">
+  <div class="modal-card" onclick="event.stopPropagation()">
+    <div class="modal-icon"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#cc1b1b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg></div>
+    <h3>Wirklich aufgeben?</h3>
+    <p>Dein Fortschritt geht verloren und du kommst zum Startbildschirm.</p>
+    <div class="modal-btns">
+      <button class="btn-primary" onclick="confirmQuit()">Ja, aufgeben</button>
+      <button class="btn-ghost" onclick="closeQuit()">Nein, weiterspielen</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-noprofile" onclick="this.classList.remove('show')">
+  <div class="modal-card" onclick="event.stopPropagation()">
+    <div class="modal-icon"><svg width="44" height="44" viewBox="0 0 24 24" fill="none" stroke="#1d56c8" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg></div>
+    <h3>Kein Profil gewaehlt</h3>
+    <p>Bitte waehle zuerst ein Profil, damit dein Highscore gespeichert wird.</p>
+    <div class="modal-btns">
+      <button class="btn-primary btn-blue" onclick="document.getElementById('modal-noprofile').classList.remove('show');openProfiles('solo');">Profil auswaehlen</button>
+      <button class="btn-ghost" onclick="document.getElementById('modal-noprofile').classList.remove('show')">Spaeter</button>
+    </div>
+  </div>
+</div>
+
+</div><!-- #app -->
+<script>
+// ══════════════════════════════════════════════════
+// FIREBASE
+// ══════════════════════════════════════════════════
+const FB_CFG = {
+  apiKey: "AIzaSyDE-nG0ZjPZ5o8cksPld-s4KDu-EWYx8bs",
+  authDomain: "quiz-app-feuerwehr.firebaseapp.com",
+  projectId: "quiz-app-feuerwehr",
+  storageBucket: "quiz-app-feuerwehr.firebasestorage.app",
+  messagingSenderId: "941341812267",
+  appId: "1:941341812267:web:e0464545cb69b458496c6e"
+};
+firebase.initializeApp(FB_CFG);
+const AUTH = firebase.auth();
+const DB   = firebase.firestore();
+
+const ALLOWED_EMAILS = ['tobias.bales@gmx.de','t.bales@gmx.de'];
+const AV_COLS = ['#cc1b1b','#1d56c8','#059669','#7c3aed','#d97706','#0891b2','#db2777'];
+
+function eColor(e){let h=0;for(let i=0;i<e.length;i++)h=(h*31+e.charCodeAt(i))%AV_COLS.length;return AV_COLS[h];}
+function eInit(e){const n=e.split('@')[0],p=n.split(/[._-]/);return p.length>=2?(p[0][0]+p[1][0]).toUpperCase():n.substring(0,2).toUpperCase();}
+function eName(e){return e.split('@')[0].split(/[._-]/).map(w=>w.charAt(0).toUpperCase()+w.slice(1)).join(' ');}
+
+// ══════════════════════════════════════════════════
+// FIRESTORE HELPERS
+// ══════════════════════════════════════════════════
+async function fsAddPts(uid,email,pts,totalQs){
+  const ref=DB.collection('highscores').doc(uid);
+  const snap=await ref.get();
+  const prev=snap.exists?(snap.data().points||0):0;
+  const savedName=snap.exists&&snap.data().name?snap.data().name:eName(email);
+  await ref.set({
+    email, name:savedName, points:prev+pts,
+    games:firebase.firestore.FieldValue.increment(1),
+    correct:firebase.firestore.FieldValue.increment(pts),
+    totalQuestions:firebase.firestore.FieldValue.increment(totalQs||pts),
+    updatedAt:firebase.firestore.FieldValue.serverTimestamp()
+  },{merge:true});
+  return{prev,now:prev+pts};
+}
+async function fsAddWin(uid){
+  await DB.collection('highscores').doc(uid).set(
+    {wins:firebase.firestore.FieldValue.increment(1)},{merge:true});
+}
+async function fsGetHS(uid){
+  const d=await DB.collection('highscores').doc(uid).get();
+  return d.exists?d.data():{points:0,games:0,wins:0,correct:0,totalQuestions:0};
+}
+async function fsGetAll(){
+  const snap=await DB.collection('highscores').get();
+  const res=[];snap.forEach(d=>res.push({id:d.id,...d.data()}));
+  return res;
+}
+async function fsResetAll(){
+  const snap=await DB.collection('highscores').get();
+  const batch=DB.batch();
+  snap.forEach(d=>batch.update(d.ref,{points:0,games:0,wins:0,correct:0,totalQuestions:0}));
+  await batch.commit();
+}
+
+// ══════════════════════════════════════════════════
+// DATA
+// ══════════════════════════════════════════════════
+const D={
+"HLF 20":{"Allgemein":["AED","Abgasschlauch","Absaugvorichtung","Airbagsicherung","Allzwecksauger","Auffangwanne","Aufnahmebruecke","Axt","Betankungsgarnitur","Blitzleuchte","Bolzenschneider","Brechstange","Doppel-Steuerorgan","Drahtseil 5m","Dreifachverteiler Elektro","Druckluftschlauch","Druckminderer","Druckschlauch A 5m","Dunggabel","Dunghaken","Einpersonenhaspel","Einreisshaken","Elektro-Werkzeugkasten","Elektroabdecktuch","Elektroschutzhandschuh","Faltsignal","Feuerloescher","Feuerwehraxt","Flutlichtstrahler","Fuss-Luftpumpe","Gasmessgeraet","Gully-Dichtkissen","Handlampe","Hebegurt","Hebekissen","Hohlstrahlrohr","Hydraulikaggregat","Hydraulischer Rettungszylinder","Hydraulisches Rettungsgeraet","Hydraulisches Schneidegeraet","Kabeltrommel 230 V","Kabeltrommel 400 V 50m","Kantenreiter","Krankentrage","Kupplungsschluessel","Motorsaege","Nageleisen","Notfall Rucksack","Personenschutz-Stecker","Positionierstange","Rauchverschluss","Rettungsbrett","Rettungsweste","Sammelstueeck A-3B","Saugkorb","Saugrohr D","Saugschlauch A","Schaumaufsatz","Schaumstrahlrohr M4/S4","Schiebleiter 3-teilig","Schlauchbruecke","Schlauchtragekorb","Schmutzwasserpumpe Elektro","Schneeketten","Schnittschutz Hose/Beinlinge","Schaekel","Sicherungsleine","Spaltaxt","Spaltkeil","Spreizer Kettensatz","Sprungpolster","Stabilisierungssystem StaBFast","Standrohr 2B","Steckleiter","Stromerzeuger","Systemtrenner","Saebelsaege","Trennschleifer","Umlenkrolle","Unterbauschiebeblock","Unterlegkeil","Verkehrsleitkegel","Verkehrsunfallkasten","Verteiler BB-CBC","Vorschlaghammer","Wasserwerfer","Wathose","Werkzeugkasten","X-am Pumpe","Zugoeser","Ueberdruckbeluefter"]},
+"DLK":{"Allgemein":["Abgasschlauch","Druckschlauch C42 2.5m","Hochleistungsluefter","Hohlstrahlrohr","Hoehensicherungsgeraet","Leitung","Personenschutz-Stecker","Schnittschutz Jacke"],"Aufbau":["Abseilspinne","Aufnahmebruecke","Bandfalldaempfer","Bandschlinge","Handschuhe","Hoehensicherungsgeraet","Karabiner","Kernmantel Dynamikseil","Krankentragenlagerung","Kranschlaufe","LED Beleuchtungseinheit","Rettungsdreieck","Rollgliss","Safety Peak","Schwerlastaufnahme","Seilklemme","Statisches Seil","Stromerzeuger","Verbindungsmittel","Verbindungsmittel zur Arbeitsplatzpositionierung","Verbindungsschlauch","Verkehrsleitkegel","Verlaengerung","Wasserwerfer"],"Fuehrerhaus":["Blitzleuchte","Entfernungsmesser","Handlampe","LED Blinklicht","Universalschluessel","Warndreieck","Warnflagge","Warnleuchte","Warnweste"],"G1":["Buegelsaege","Kanister Doppel Kunststoff","Krankentrage","Motorsaege","Schleifkorbtrage","Schnittschutz Hose/Beinlinge","Sprungpolster","Teleskopstange"],"G2":["Axt","Blitzleuchte","Bolzenschneider","Einreisshaken","Feuerwehraxt","Feuerwehrleine","Halligan Tool","Handlampe","Schaekel","Spaltaxt","Stativ"],"G3":["Abschleppseil","Astschere","Dreifachverteiler Elektro","Hebegurt","Leitungstrommel","Schaekel","Verlaengerungskabel","Ueberdruckbeluefter"],"G4":["Druckschlauch B 20m","Druckschlauch B 30m","Druckschlauch C 15m","Hohlstrahlrohr","Hydrantenschluessel Unterflur","Hydrantenschluessel Ueberflur","Schornstein-Werkzeugsatz","Verteiler BB-CBC","Uebergangsstueck B-C"],"G5":["Feuerloescher","Schneeketten","Verbandkasten"],"G6":["Aufnahmebruecke","Flutlichtstrahler 140 W","Werkzeugkasten","Werkzeugkasten Elektro"],"Leiter":["Auffanggurt","Druckschlauch B 30m","Druckschlauch C 30m","Hakenschluessel","KTL Sicherheitsgurt","Rettungsdreieck","Rettungstuch RT","Schlauchhaltevorrichtung B","Schnittschutz Handschuhe","Schnittschutz Jacke","Warnweste"]},
+"TLF 4000":{"Allgemein":["Bogen 90 Grad B-B","Brechstange","Handlampe","Hydroschild C","Navigationsgeraet","Spalthammer","Warndreieck","Warnleuchte","Warnweste","Winkerkelle","Waermebildkamera","Zumischer","Uebergangsstueck B-C","Uebergangsstueck C-D"],"Dach":["Ansaugschlauch D","Dachwerfer","Dunghaken","Einreisshaken","Einsteckteil","Kupplungsschluessel","Mehrzweckduese","Rundschaufel","Saugschlauch A","Schlauchbruecke","Spaten","Steckleiter","Stossbesen","Waldbrandhacke","Waldbrandpatsche"],"G1":["Axt","Bolzenschneider","Buegelsaege","Feuerwehraxt","Handlampe"],"G2":["Aufnahmebruecke","Dreifachverteiler Elektro","Faltsignal","Flutlichtstrahler 160 W","Forsthelm","Kabeltrommel 230 V","Kabeltrommel 400 V 50m","Kanister Doppel Kunststoff","Motorsaege","Schnittschutz Hose/Beinlinge","Spaltkeil","Stativ","Verkehrsleitkegel","Verlaengerungskabel"],"G3":["Feuerloescher","Loeschrucksack","Notfall Rucksack","Rettungsweste","Tauchpumpe TP8","Unterlegkeil","Wasserwerfer","Uebergangsstueck A-B"],"G4":["Abschleppstange","Blitzleuchte","Hebegurt","Kuehlbox","LED Beleuchtungseinheit","Schaekel","Stromerzeuger","Werkzeugkasten"],"G5":["Behaelter","Duesenschlauch B"],"G6":["Hydrantenschluessel Unterflur","Hydrantenschluessel Ueberflur","Kappenheber","Kupplungsschluessel","Latthammer","Schachthaken","Schaumstrahlrohr schwer","Standrohr 2B","Systemtrenner"],"G7":["Hohlstrahlrohr","Kupplungsschluessel","Sammelstueeck A-3B","Saugkorb","Saugschutzkorb","Schlauchtragekorb","Verteiler BB-CBC","Verteiler C-DDD","Uebergangsstueck C-D"],"G8":["Druckschlauch S","Hohlstrahlrohr","Hydroschild C","Netzmittelkartusche","Schaumstrahlrohr M4/S4","Schaumstrahlrohr S2/M2","Stuezkruemmer B","Verteiler BB-CBC","Zumischer Z4","Zumischer Z8"]},
+"RW":{"Allgemein":["Atemschutzueberwachungstafel","Auffanggurt","Auffangwanne","Aufnahmebruecke","Blitzleuchte","CO Warner","Feuerloescher","Flutlichtstrahler 1000 W","Gasmessgeraet","Geraetesack","Haltegurt","Handlampe","Hydraulikaggregat","Kabeltrommel 400 V 50m","Kanister Doppel Kunststoff","Karabiner","LED Beleuchtungseinheit","Loeschdecke","Nageleisen","Navigationsgeraet","Rettungsdreieck","Rettungstuch RT","Rollgliss","Schnittschutz Hose/Beinlinge","Seilklemme","Spaltkeil","Statisches Seil","Trennschleifer","Umlenkrolle","Vorschlaghammer","Warnweste","Werkzeug","Wirbel"],"Dach":["Anschlussstueck","Deckenstuetze","Deckenstuetze 2m","Einsteckteil","Gully Abdeckung","Heizoel/Dieselpumpe","Marinetrage","Mehrzweckleiter","Schlauch","Schlauchschellen","Steckleiter","Teleskop-Dreibeinstativ","Zumischer"],"G1":["Adapter","Arbeitsleuchte","Dreifachverteiler Elektro","Forsthelm","Hebekissen","Kabeltrommel 230 V","Kabeltrommel 400 V 50m","Leitung","Motorsaege","Personenschutz-Stecker","Sichtschutzwand","Tauchpumpe TP4","Trennschleifmaschine"],"G2":["Akku Geradschleifer","Bueffelwinde","Doppel-Steuerorgan","Drahtseile","Druckluftschlauch","Druckminderer","Elektroabdecktuch","Elektroschutzhandschuh","Hebegurt","Hebekissen","Kantenreiter","Mehrzweckzug","Notfallsignalgeraet","Schaekel","Spanngurt","Stabilisierungssystem StaBFast","Transportrolle","Umlenkrolle","Unterbauschiebeblock","Zugoese"],"G3":["Akku-Bohrmaschine","Bohrhammer","Dreifachverteiler Elektro","Feuerloescher","Handkreissaege","Plasma Schneidgeraet","Stativ","Stromerzeuger","Saebelsaege","Trennschleifer","Wathose"],"G4":["Bauklammer C","Hydraulisches Rettungsgeraet","Hydraulisches Schneidegeraet","Kappmesser","Schaekel"],"G5":["Sortimentskiste"],"G6":["Blitzleuchte","Faltsignal","Verkehrsleitkegel"],"G7":["Allzwecksauger","Bandfalldaempfer","Bandschlinge","Be- und Entlueftungsgeraet","Karabiner","Kernmantel Dynamikseil","Verbindungsmittel zur Arbeitsplatzpositionierung"],"G8":["Elektro-Werkzeugkasten","Hebesatz","Inspektionskamera","Sortimentskiste","Tuerloeffnungssatz","Verbandkasten","Werkzeugkasten"],"GR":["Abseilspinne","Deckenstuetze 1m","Krankentrage","Rettungsbrett","Rettungsplattform","Schaufeltrage","Schleifkorbtrage","Stuetzen 0.4m","Stuetzen 0.6m"]},
+"MZF":{"Allgemein":["Abschleppseil","Blitzleuchte","Feuerloescher","Handlampe","Ladegeraet KFZ","Schaekel","Spanngurt","Warndreieck"]},
+"MTF":{"Allgemein":["Feuerloescher","Handlampe","Navigationsgeraet","Schneeketten"]}
+};
+const ART={"HLF 20":"dem","DLK":"der","TLF 4000":"dem","RW":"dem","MZF":"dem","MTF":"dem"};
+const VEHS=Object.keys(D);
+
+// ══════════════════════════════════════════════════
+// QUIZ HELPERS
+// ══════════════════════════════════════════════════
+const ivc={};
+VEHS.forEach(v=>Object.values(D[v]).flat().forEach(i=>{if(!ivc[i])ivc[i]=new Set();ivc[i].add(v)}));
+const UNIQUE={};
+VEHS.forEach(v=>{UNIQUE[v]=Object.values(D[v]).flat().filter(i=>ivc[i].size===1);});
+function allItems(v){return[...new Set(Object.values(D[v]).flat())];}
+function shuf(a){const b=[...a];for(let i=b.length-1;i>0;i--){const j=0|Math.random()*(i+1);[b[i],b[j]]=[b[j],b[i]];}return b;}
+function rnd(a){return a[0|Math.random()*a.length];}
+
+function loadCQ(){try{return JSON.parse(localStorage.getItem('fw_cq')||'[]');}catch(e){return[];}}
+function saveCQ(q){localStorage.setItem('fw_cq',JSON.stringify(q));}
+
+const CATCFG={
+  veh:{ic:`<svg viewBox="0 0 24 24" fill="none"><path d="M12 2L22 12H18V22H6V12H2L12 2Z" fill="#1d56c8"/></svg>`,cl:'ci-blue',n:'Fahrzeug gesucht',s:'Welchem Fahrzeug gehoert das Geraet?'},
+  not:{ic:`<svg viewBox="0 0 24 24" fill="none"><path d="M18 6L6 18M6 6l12 12" stroke="#b91c1c" stroke-width="2.5" stroke-linecap="round"/></svg>`,cl:'ci-red',n:'Liegt NICHT drauf?',s:'Finde das nicht passende Geraet'},
+  lager:{ic:`<svg viewBox="0 0 24 24" fill="none"><rect x="3" y="11" width="18" height="10" rx="2" stroke="#7c3aed" stroke-width="2"/><path d="M8 11V7a4 4 0 018 0v4" stroke="#7c3aed" stroke-width="2" stroke-linecap="round"/></svg>`,cl:'ci-purple',n:'Lagerplatz gesucht',s:'In welchem Lagerplatz liegt das Geraet?'},
+  custom:{ic:`<svg viewBox="0 0 24 24" fill="none"><circle cx="12" cy="12" r="10" stroke="#d97706" stroke-width="2"/><path d="M12 8v4l3 3" stroke="#d97706" stroke-width="2" stroke-linecap="round"/></svg>`,cl:'ci-orange',n:'Eigene Frage',s:'Selbst erstellte Frage'}
+};
+
+function makeQ(type){
+  const pool=type==='all'?(loadCQ().length?['veh','not','lager','custom']:['veh','not','lager']):null;
+  const t=pool?rnd(pool):type;
+  if(t==='custom'){
+    const cqs=loadCQ();if(!cqs.length)return makeQ('veh');
+    const q=rnd(cqs);
+    return{cat:'custom',q:q.frage,hi:null,opts:shuf([q.richtig,...q.falsch]),ok:q.richtig,note:'Kategorie: '+q.kategorie};
+  }
+  if(t==='veh'){
+    const el=VEHS.filter(v=>UNIQUE[v].length>0);if(!el.length)return makeQ('not');
+    const v=rnd(el),item=rnd(UNIQUE[v]);
+    const w=shuf(VEHS.filter(k=>k!==v)).slice(0,3);if(w.length<3)return makeQ('not');
+    return{cat:'veh',q:'Auf welchem Fahrzeug befindet sich:',hi:item,opts:shuf([v,...w]),ok:v,note:'Richtig: '+v};
+  }
+  if(t==='not'){
+    const v=rnd(VEHS),art=ART[v],mine=new Set(allItems(v));
+    const others=VEHS.flatMap(k=>k!==v?allItems(k):[]).filter(i=>!mine.has(i));
+    if(!others.length)return makeQ('veh');
+    const wrong=rnd(others),rights=shuf([...mine]).slice(0,3);
+    if(rights.length<3)return makeQ('veh');
+    return{cat:'not',q:'Was liegt NICHT auf '+art+' '+v+'?',hi:null,opts:shuf([wrong,...rights]),ok:wrong,note:'"'+wrong+'" ist auf einem anderen Fahrzeug verlastet.'};
+  }
+  if(t==='lager'){
+    const el=VEHS.filter(v=>Object.keys(D[v]).length>1);if(!el.length)return makeQ('veh');
+    const v=rnd(el),art=ART[v],lagers=Object.keys(D[v]),l=rnd(lagers);
+    if(!D[v][l].length)return makeQ('veh');
+    const item=rnd(D[v][l]);
+    let wl=shuf(lagers.filter(x=>x!==l));
+    while(wl.length<3)wl.push(rnd(VEHS.filter(k=>k!==v)));
+    return{cat:'lager',q:'In welchem Lagerplatz auf '+art+' '+v+' liegt:',hi:item,opts:shuf([l,...wl.slice(0,3)]),ok:l,note:'"'+item+'" befindet sich im Lagerplatz '+l+' auf '+art+' '+v+'.'};
+  }
+  return makeQ('veh');
+}
+
+// ══════════════════════════════════════════════════
+// STATE
+// ══════════════════════════════════════════════════
+let ME=null;         // {uid,email,name,initials,color}
+let PROFILES=[];     // other users for duel
+let nv=10,tv='all',qs=[],cur=0,score=0,total=0,locked=false;
+let duelMode=false,duelP2=null,duelNv=10,duelTv='all';
+let duelP1Score=0,duelP1Done=false;
+let loginMode='login';
+const LTRS=['A','B','C','D'],CLS=['a0','a1','a2','a3'];
+
+// ══════════════════════════════════════════════════
+// NAVIGATION
+// ══════════════════════════════════════════════════
+function show(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.remove('active'));
+  document.getElementById(id).classList.add('active');
+  const sc=document.getElementById(id).querySelector('.scroll-body');
+  if(sc)sc.scrollTop=0;
+}
+function goTo(id){
+  show(id);
+  if(id==='s-highscore')renderHS();
+  if(id==='s-home'){updateChip();loadProfiles();}
+  if(id==='s-settings'){
+    document.getElementById('s-item-count').textContent=
+      VEHS.reduce((n,v)=>n+new Set(Object.values(D[v]).flat()).size,0);
+    // Show/update profile section only when logged in
+    const sec=document.getElementById('s-profile-section');
+    if(ME){
+      sec.style.display='';
+      document.getElementById('s-profile-av').textContent=ME.initials;
+      document.getElementById('s-profile-av').style.background=ME.color;
+      document.getElementById('s-profile-email').textContent=ME.email;
+    } else {
+      sec.style.display='none';
+    }
+  }
+  if(id==='s-edit-profile'){
+    if(!ME){goTo('s-settings');return;}
+    document.getElementById('ep-avatar').textContent=ME.initials;
+    document.getElementById('ep-avatar').style.background=ME.color;
+    document.getElementById('ep-name').textContent=ME.name;
+    document.getElementById('ep-email').textContent=ME.email;
+    document.getElementById('ep-email-hdr').textContent=ME.email;
+    document.getElementById('ep-new-name').value=ME.name;
+    document.getElementById('ep-cur-pw').value='';
+    document.getElementById('ep-new-pw').value='';
+    document.getElementById('ep-new-pw2').value='';
+    document.getElementById('ep-name-msg').style.display='none';
+    document.getElementById('ep-pw-msg').style.display='none';
+  }
+  if(id==='s-create-q')renderCQList();
+}
+
+// ══════════════════════════════════════════════════
+// AUTH
+// ══════════════════════════════════════════════════
+function loginErr(msg){
+  const e=document.getElementById('login-err');
+  e.textContent=msg;
+  e.style.display='block';
+  e.style.animation='none';
+  setTimeout(()=>{e.style.animation='shake .3s ease';},10);
+  // Passwortfeld rot markieren
+  const pw=document.getElementById('login-pw');
+  pw.style.borderColor='#b91c1c';
+  pw.style.background='#fff5f5';
+  pw.addEventListener('input',()=>{
+    pw.style.borderColor='';pw.style.background='';
+    e.style.display='none';
+  },{once:true});
+}
+
+function toggleLoginMode(){
+  loginMode=loginMode==='login'?'register':'login';
+  const r=loginMode==='register';
+  document.getElementById('login-title').textContent=r?'Konto erstellen':'Willkommen!';
+  document.getElementById('login-sub').textContent=r?'Vergib ein Passwort fuer dein Konto.':'Melde dich mit deiner Feuerwehr-E-Mail an.';
+  document.getElementById('pw2-field').style.display=r?'':'none';
+  document.getElementById('login-btn').textContent=r?'Registrieren':'Anmelden';
+  document.getElementById('toggle-text').textContent=r?'Bereits registriert?':'Noch kein Passwort?';
+  document.getElementById('toggle-btn').textContent=r?'Anmelden':'Registrieren';
+  document.getElementById('login-err').style.display='none';
+}
+
+async function doLogin(){
+  const email=document.getElementById('login-email').value.trim().toLowerCase();
+  const pw=document.getElementById('login-pw').value;
+  const pw2=document.getElementById('login-pw2').value;
+  document.getElementById('login-err').style.display='none';
+  if(!email){loginErr('Bitte E-Mail eingeben.');return;}
+  if(!ALLOWED_EMAILS.includes(email)){loginErr('Diese E-Mail ist nicht zugelassen. Bitte den Administrator kontaktieren.');return;}
+  if(pw.length<6){loginErr('Passwort muss mindestens 6 Zeichen haben.');return;}
+  if(loginMode==='register'&&pw!==pw2){loginErr('Passwoerter stimmen nicht ueberein.');return;}
+  const btn=document.getElementById('login-btn');
+  btn.textContent='Bitte warten...';btn.disabled=true;
+  try{
+    if(loginMode==='register'){
+      await AUTH.createUserWithEmailAndPassword(email,pw);
+    }else{
+      await AUTH.signInWithEmailAndPassword(email,pw);
+    }
+  }catch(e){
+    btn.textContent=loginMode==='register'?'Registrieren':'Anmelden';btn.disabled=false;
+    const m={
+      'auth/wrong-password':'Falsches Passwort.',
+      'auth/invalid-credential':'Falsches Passwort oder E-Mail nicht registriert.',
+      'auth/user-not-found':'Kein Konto gefunden. Bitte zuerst registrieren.',
+      'auth/email-already-in-use':'Diese E-Mail ist bereits registriert. Bitte anmelden.',
+      'auth/too-many-requests':'Zu viele Versuche. Bitte kurz warten.',
+      'auth/network-request-failed':'Keine Internetverbindung.',
+      'auth/operation-not-allowed':'E-Mail/Passwort-Login ist in Firebase noch nicht aktiviert! Bitte in der Firebase-Konsole unter Authentication > Sign-in method aktivieren.',
+      'auth/weak-password':'Passwort zu schwach. Mindestens 6 Zeichen.',
+      'auth/invalid-email':'Ungueltige E-Mail-Adresse.'
+    };
+    const msg=m[e.code]||('Fehler ('+e.code+'): '+e.message);
+    loginErr(msg);
+    console.error('Firebase Auth Fehler:', e.code, e.message);
+  }
+}
+
+async function doLogout(){
+  // Fehlermeldung beim Abmelden loeschen
+  document.getElementById('login-err').style.display='none';
+  await AUTH.signOut();
+}
+
+// Zeige Login nach 5 Sekunden falls Firebase nicht antwortet
+const authTimeout = setTimeout(()=>{
+  show('s-login');
+  loginErr('Verbindung zu Firebase dauert lange. Internetverbindung pruefen.');
+}, 5000);
+
+AUTH.onAuthStateChanged(async(user)=>{
+  clearTimeout(authTimeout);
+  if(user){
+    const email=user.email.toLowerCase();
+    if(!ALLOWED_EMAILS.includes(email)){
+      await AUTH.signOut();
+      show('s-login');
+      loginErr('Zugriff verweigert. Diese E-Mail ist nicht fuer die App freigeschaltet.');
+      return;
+    }
+    // Show loading screen while setting up
+    show('s-loading');
+    ME={uid:user.uid,email,name:eName(email),initials:eInit(email),color:eColor(email)};
+    // BUG 2 FIX: Gespeicherten Anzeigenamen aus Firestore laden
+    try{
+      const doc=await DB.collection('highscores').doc(user.uid).get();
+      if(doc.exists && doc.data().name){
+        ME.name=doc.data().name;
+        // Initialen aus dem gespeicherten Namen berechnen
+        const parts=ME.name.trim().split(/\s+/).filter(Boolean);
+        ME.initials=parts.length>=2
+          ?(parts[0][0]+parts[parts.length-1][0]).toUpperCase()
+          :ME.name.substring(0,2).toUpperCase();
+      }
+    }catch(e){
+      console.warn('Name laden fehlgeschlagen:', e.message);
+    }
+    await loadProfiles();
+    updateChip();
+    show('s-home');
+  }else{
+    ME=null;
+    // BUG 1 FIX: Fehlerfeld NICHT loeschen — Fehlermeldung vom Login soll sichtbar bleiben
+    // Nur Button und Passwortfelder zuruecksetzen
+    const btn=document.getElementById('login-btn');
+    btn.textContent='Anmelden';btn.disabled=false;
+    document.getElementById('login-pw').value='';
+    document.getElementById('login-pw2').value='';
+    show('s-login');
+  }
+});
+
+async function loadProfiles(){
+  if(!ME)return;
+  try{
+    PROFILES=[];
+    // Start with whitelisted users not yet in Firestore
+    ALLOWED_EMAILS.filter(e=>e!==ME.email).forEach(email=>{
+      PROFILES.push({id:'p_'+email,name:eName(email),initials:eInit(email),color:eColor(email),email});
+    });
+    // Overwrite with real Firestore data if available
+    const all=await fsGetAll();
+    all.filter(u=>u.id!==ME.uid).forEach(u=>{
+      const idx=PROFILES.findIndex(p=>p.email===u.email);
+      const entry={id:u.id,name:u.name||eName(u.email||''),initials:eInit(u.email||''),color:eColor(u.email||''),email:u.email||'',points:u.points||0,games:u.games||0};
+      if(idx>=0)PROFILES[idx]=entry;else PROFILES.push(entry);
+    });
+  }catch(e){console.warn('loadProfiles:',e);}
+}
+
+// ══════════════════════════════════════════════════
+// HOME CHIP
+// ══════════════════════════════════════════════════
+async function updateChip(){
+  if(!ME)return;
+  document.getElementById('home-av').textContent=ME.initials;
+  document.getElementById('home-av').style.background=ME.color;
+  document.getElementById('home-uname').textContent=ME.name;
+  document.getElementById('home-usub').textContent='Lade Punkte...';
+  try{
+    const hs=await fsGetHS(ME.uid);
+    document.getElementById('home-usub').textContent=(hs.points||0)+' Punkte / '+(hs.games||0)+' Spiele';
+  }catch(e){document.getElementById('home-usub').textContent=ME.email;}
+}
+
+// ══════════════════════════════════════════════════
+// PROFILE LIST (for duel)
+// ══════════════════════════════════════════════════
+function buildProfileGrid(containerId,onSel){
+  const grid=document.getElementById(containerId);
+  grid.innerHTML='';
+  if(!PROFILES.length){
+    grid.innerHTML='<div style="padding:14px 16px;font-size:13px;color:var(--muted);">Keine anderen Mitglieder verfuegbar.</div>';
+    return;
+  }
+  PROFILES.forEach(p=>{
+    const c=document.createElement('div');
+    c.className='profile-card';c.dataset.pid=p.id;
+    c.innerHTML=`<div class="profile-avatar" style="background:${p.color}">${p.initials}</div><div style="flex:1;min-width:0;"><div class="profile-name">${p.name}</div><div class="profile-hs">${p.points||0} Punkte</div></div><div class="profile-check"><svg viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12l5 5L19 7"/></svg></div>`;
+    c.onclick=()=>onSel(p,c);
+    grid.appendChild(c);
+  });
+}
+
+// ══════════════════════════════════════════════════
+// HOME ACTIONS
+// ══════════════════════════════════════════════════
+function onSolo(){goTo('s-config');}
+function onDuel(){openDuelConfig();}
+
+// ══════════════════════════════════════════════════
+// DUEL CONFIG
+// ══════════════════════════════════════════════════
+function openDuelConfig(){
+  document.getElementById('duel-p1-label').textContent=ME.name;
+  duelP2=null;
+  buildProfileGrid('duel-p2-grid',(p,card)=>{
+    document.querySelectorAll('#duel-p2-grid .profile-card').forEach(c=>c.classList.remove('sel'));
+    card.classList.add('sel');duelP2=p;
+    const btn=document.getElementById('duel-start-btn');btn.disabled=false;btn.style.opacity='1';
+  });
+  document.getElementById('duel-start-btn').disabled=true;
+  document.getElementById('duel-start-btn').style.opacity='.4';
+  goTo('s-duel-config');
+}
+
+// ══════════════════════════════════════════════════
+// CONFIG SELECTORS
+// ══════════════════════════════════════════════════
+function pN(el,mode){
+  document.querySelectorAll('#'+(mode==='solo'?'solo':'duel')+'-num-grid .ncard').forEach(e=>e.classList.remove('sel'));
+  el.classList.add('sel');
+  if(mode==='solo')nv=el.dataset.v==='999'?999:+el.dataset.v;else duelNv=+el.dataset.v;
+}
+function pT(el,mode){
+  document.querySelectorAll('#'+(mode==='solo'?'solo':'duel')+'-type-list .tcard').forEach(e=>e.classList.remove('sel'));
+  el.classList.add('sel');
+  if(mode==='solo')tv=el.dataset.v;else duelTv=el.dataset.v;
+}
+
+// ══════════════════════════════════════════════════
+// QUIZ START
+// ══════════════════════════════════════════════════
+function startSolo(){
+  duelMode=false;total=Math.min(nv,60);score=0;cur=0;locked=false;
+  qs=Array.from({length:total},()=>makeQ(tv));
+  document.getElementById('qhdr-solo').style.display='grid';
+  document.getElementById('qhdr-duel').style.display='none';
+  document.getElementById('hpts').textContent='0';
+  goTo('s-quiz');renderQ();
+}
+
+function startDuel(){
+  if(!duelP2)return;
+  duelMode=true;duelP1Done=false;duelP1Score=0;
+  total=duelNv;score=0;cur=0;locked=false;
+  qs=Array.from({length:total},()=>makeQ(duelTv));
+  document.getElementById('qhdr-solo').style.display='none';
+  document.getElementById('qhdr-duel').style.display='block';
+  document.getElementById('dp1-name').textContent=ME.name;
+  document.getElementById('dp2-name').textContent=duelP2.name;
+  document.getElementById('dp1-score').textContent='0';
+  document.getElementById('dp2-score').textContent='0';
+  document.getElementById('dp1-side').style.opacity='1';
+  document.getElementById('dp2-side').style.opacity='.45';
+  document.getElementById('turn-lbl').textContent=ME.name+' ist dran';
+  goTo('s-quiz');renderQ();
+}
+
+function startP2(){
+  duelP1Score=score;duelP1Done=true;score=0;cur=0;locked=false;
+  document.getElementById('dp1-side').style.opacity='.45';
+  document.getElementById('dp2-side').style.opacity='1';
+  document.getElementById('dp1-score').textContent=duelP1Score;
+  document.getElementById('turn-lbl').textContent=duelP2.name+' ist dran';
+  goTo('s-quiz');renderQ();
+}
+
+// ══════════════════════════════════════════════════
+// RENDER QUESTION
+// ══════════════════════════════════════════════════
+function renderQ(){
+  locked=false;const q=qs[cur];
+  document.getElementById('qcnt').textContent='Frage '+(cur+1)+' von '+total;
+  document.getElementById('qpts-lbl').textContent=score+' Punkte';
+  document.getElementById('hpts').textContent=score;
+  document.getElementById('hdr-qn').textContent=cur+1;
+  document.getElementById('hdr-qt').textContent=total;
+  document.getElementById('prog').style.width=(cur/total*100)+'%';
+  if(duelMode){
+    const who=duelP1Done?duelP2.name:ME.name;
+    document.getElementById('turn-lbl').textContent=who+' ist dran - Frage '+(cur+1)+' von '+total;
+    if(duelP1Done)document.getElementById('dp2-score').textContent=score;
+  }
+  const c=CATCFG[q.cat];
+  const ci=document.getElementById('cat-ic');ci.innerHTML=c.ic;ci.className='cat-ic '+c.cl;
+  document.getElementById('cat-name').textContent=c.n;
+  document.getElementById('cat-sub').textContent=c.s;
+  document.getElementById('q-txt').textContent=q.q;
+  document.getElementById('q-hi').textContent=q.hi?'\u201E'+q.hi+'\u201C':'';
+  document.getElementById('fb').style.display='none';
+  document.getElementById('next-wrap').style.display='none';
+  const ag=document.getElementById('ans-grid');ag.innerHTML='';
+  q.opts.forEach((o,i)=>{
+    const b=document.createElement('button');
+    b.className='ans '+CLS[i];
+    b.innerHTML='<div class="ans-inner"><div class="ans-ltr">'+LTRS[i]+'</div><div class="ans-txt">'+o+'</div></div>';
+    b.onclick=()=>pick(o,q);ag.appendChild(b);
+  });
+  const sc=document.getElementById('quiz-scroll');if(sc)sc.scrollTop=0;
+}
+
+function pick(chosen,q){
+  if(locked)return;locked=true;
+  const ok=chosen===q.ok;
+  if(ok)score++;
+  document.getElementById('hpts').textContent=score;
+  document.getElementById('qpts-lbl').textContent=score+' Punkte';
+  if(duelMode&&duelP1Done)document.getElementById('dp2-score').textContent=score;
+  document.querySelectorAll('.ans').forEach(b=>{
+    b.disabled=true;
+    const t=b.querySelector('.ans-txt').textContent;
+    if(t===q.ok)b.classList.add('correct');
+    else if(t===chosen&&!ok)b.classList.add('wrong');
+    else b.classList.add('dim');
+  });
+  const fb=document.getElementById('fb');
+  fb.style.display='';fb.className='fb-box '+(ok?'fb-ok':'fb-bad');
+  fb.innerHTML='<div class="fb-hd">'+(ok?'Richtig!':'Leider falsch')+'</div>'+q.note;
+  document.getElementById('next-wrap').style.display='';
+  const isLast=cur===total-1;
+  document.getElementById('btn-next').textContent=
+    duelMode&&!duelP1Done&&isLast?'Zum Spielerwechsel':isLast?'Ergebnis anzeigen':'Weiter';
+  setTimeout(()=>{fb.scrollIntoView({behavior:'smooth',block:'nearest'});},100);
+}
+
+function nextQ(){
+  cur++;
+  if(cur>=total){
+    if(duelMode&&!duelP1Done)showHandover();
+    else if(duelMode&&duelP1Done)showDuelResult();
+    else showSoloResult();
+  }else renderQ();
+}
+
+// ══════════════════════════════════════════════════
+// HANDOVER
+// ══════════════════════════════════════════════════
+function showHandover(){
+  const pct=Math.round(score/total*100);
+  document.getElementById('ho-title').textContent=ME.name+' fertig!';
+  document.getElementById('ho-msg').textContent='Jetzt ist '+duelP2.name+' dran. Gib das Geraet weiter!';
+  document.getElementById('ho-score').textContent=score+' / '+total+' ('+pct+'%)';
+  document.getElementById('ho-p2name').textContent=duelP2.name;
+  show('s-handover');
+}
+
+// ══════════════════════════════════════════════════
+// SOLO RESULT
+// ══════════════════════════════════════════════════
+async function showSoloResult(){
+  show('s-result');
+  const pct=Math.round(score/total*100);
+  document.getElementById('r-pct').textContent=pct+'%';
+  document.getElementById('r-ok').textContent=score;
+  document.getElementById('r-bad').textContent=total-score;
+  document.getElementById('r-sc').textContent=score;
+  const lvl=Math.min(5,0|pct/20);
+  document.getElementById('r-title').textContent=['Weitermachen!','Noch ueben!','Nicht schlecht!','Gut gemacht!','Sehr gut!','Experte!'][lvl];
+  document.getElementById('r-msg').textContent=['Schau dir nochmal die Fahrzeugkarten an!','Noch ein paar Runden und du kennst alles.','Du kennst schon einiges!','Du kennst deine Fahrzeuge gut!','Fast perfekt!','Du bist ein Fahrzeugexperte!'][lvl];
+  const badge=document.getElementById('r-hs-badge');
+  if(ME&&score>0){
+    try{
+      const r=await fsAddPts(ME.uid,ME.email,score,total);
+      badge.style.display='';
+      badge.textContent=ME.name+': '+r.prev+' -> '+r.now+' Punkte gesamt';
+    }catch(e){badge.style.display='none';}
+  }else badge.style.display='none';
+}
+
+// ══════════════════════════════════════════════════
+// DUEL RESULT
+// ══════════════════════════════════════════════════
+async function showDuelResult(){
+  const p2score=score,p1score=duelP1Score,dtotal=total;
+  show('s-duel-result');
+  const tie=p1score===p2score,p1wins=p1score>p2score;
+  const trophySvg='<svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#d97706" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9H3V4h18v5h-3"/><path d="M12 15c-3.31 0-6-2.69-6-6V4h12v5c0 3.31-2.69 6-6 6z"/><path d="M8 21h8"/><path d="M12 15v6"/></svg>';
+  const tieSvg='<svg width="52" height="52" viewBox="0 0 24 24" fill="none" stroke="#6b7280" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>';
+  document.getElementById('dr-trophy').innerHTML=tie?tieSvg:trophySvg;
+  document.getElementById('dr-winner').textContent=tie?'Unentschieden!':(p1wins?ME.name:duelP2.name);
+  document.getElementById('dr-sub').textContent=tie?'Beide gleichauf!':'gewinnt das Duell!';
+  const pc1=Math.round(p1score/dtotal*100),pc2=Math.round(p2score/dtotal*100);
+  document.getElementById('dr-n1').textContent=ME.name;
+  document.getElementById('dr-s1').textContent=p1score;
+  document.getElementById('dr-pc1').textContent=pc1+'% richtig';
+  document.getElementById('dr-n2').textContent=duelP2.name;
+  document.getElementById('dr-s2').textContent=p2score;
+  document.getElementById('dr-pc2').textContent=pc2+'% richtig';
+  document.getElementById('dr-box1').className='dscore-box'+(p1wins?' win':'');
+  document.getElementById('dr-box2').className='dscore-box'+((!p1wins&&!tie)?' win':'');
+  const badge2=document.getElementById('dr-hs-badge');
+  const msgs=[];
+  try{
+    if(p1score>0){await fsAddPts(ME.uid,ME.email,p1score,dtotal);msgs.push(ME.name+': +'+p1score+' Pkt');}
+    if(p2score>0&&duelP2.id&&!duelP2.id.startsWith('p_')){
+      await fsAddPts(duelP2.id,duelP2.email,p2score,dtotal);msgs.push(duelP2.name+': +'+p2score+' Pkt');
+    }
+    if(!tie){if(p1wins)await fsAddWin(ME.uid);else if(!duelP2.id.startsWith('p_'))await fsAddWin(duelP2.id);}
+    if(msgs.length){badge2.style.display='';badge2.textContent=msgs.join(' / ')+' gespeichert';}
+    else badge2.style.display='none';
+  }catch(e){badge2.style.display='none';}
+}
+
+// ══════════════════════════════════════════════════
+// HIGHSCORE
+// ══════════════════════════════════════════════════
+async function renderHS(){
+  const list=document.getElementById('hs-list');
+  list.innerHTML='<div style="padding:14px 16px;font-size:13px;color:var(--muted);">Lade...</div>';
+  try{
+    const all=await fsGetAll();
+    // Fehlende Mitglieder ergaenzen
+    ALLOWED_EMAILS.forEach(email=>{
+      if(!all.find(u=>u.email===email))
+        all.push({id:'new_'+email,email,name:eName(email),points:0,games:0,wins:0,correct:0,totalQuestions:0});
+    });
+
+    // Bayes'sche Trefferquote: (richtige + 5) / (gesamt + 10)
+    // Verhindert dass wenige Spiele mit 100% sofort Platz 1 belegen
+    // und dass Vielspiele einfach durch Masse gewinnen
+    all.forEach(u=>{
+      const c=u.correct||u.points||0;
+      const t=u.totalQuestions||Math.max(c,1);
+      u._quote=Math.round((c/Math.max(t,1))*100); // echte Quote in %
+      u._score=(c+5)/(t+10); // gewichteter Wert fuer Sortierung
+    });
+    all.sort((a,b)=>b._score-a._score);
+
+    list.innerHTML='';
+    // Erklaerung oben
+    const info=document.createElement('div');
+    info.style.cssText='padding:10px 16px 8px;font-size:11px;color:var(--muted);border-bottom:1px solid var(--border);line-height:1.5;';
+    info.textContent='Sortierung nach gewichteter Trefferquote. Wenige Spiele zaehlen weniger.';
+    list.appendChild(info);
+
+    const rcolors=['#f59e0b','#9ca3af','#b45309','var(--light)','var(--light)','var(--light)','var(--light)','var(--light)','var(--light)','var(--light)'];
+    const ranks=['1.','2.','3.','4.','5.','6.','7.','8.','9.','10.'];
+
+    all.forEach((u,i)=>{
+      const isMe=u.email===ME?.email;
+      const correct=u.correct||u.points||0;
+      const totalQ=u.totalQuestions||0;
+      const quote=u._quote;
+      const games=u.games||0;
+
+      // Fortschrittsbalken Farbe nach Quote
+      const barColor=quote>=80?'#059669':quote>=60?'#d97706':'#b91c1c';
+
+      const row=document.createElement('div');
+      row.className='hs-row';
+      row.style.cssText='display:flex;flex-direction:column;padding:12px 16px;border-bottom:1px solid var(--border);gap:8px;'+(isMe?'background:var(--blue-light);':'');
+
+      row.innerHTML=`
+        <div style="display:flex;align-items:center;gap:10px;">
+          <div style="font-size:14px;font-weight:900;width:24px;text-align:center;flex-shrink:0;color:${rcolors[i]||'var(--light)'};">${ranks[i]||'?'}</div>
+          <div class="hs-av" style="background:${eColor(u.email||'')};width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:13px;font-weight:900;color:#fff;flex-shrink:0;">${eInit(u.email||'')}</div>
+          <div style="flex:1;min-width:0;">
+            <div style="font-size:14px;font-weight:800;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${u.name||eName(u.email||'')}${isMe?' <span style="font-size:10px;color:var(--blue);font-weight:700;">(ich)</span>':''}</div>
+            <div style="font-size:10px;color:var(--light);margin-top:1px;">${games} Spiele &middot; ${correct} / ${totalQ} richtig</div>
+          </div>
+          <div style="text-align:right;flex-shrink:0;">
+            <div style="font-size:20px;font-weight:900;color:${barColor};">${quote}%</div>
+            <div style="font-size:9px;color:var(--light);">Quote</div>
+          </div>
+        </div>
+        <div style="background:#e5e7eb;border-radius:4px;height:6px;overflow:hidden;margin-left:34px;">
+          <div style="height:100%;width:${quote}%;background:${barColor};border-radius:4px;transition:width .6s;"></div>
+        </div>`;
+      list.appendChild(row);
+    });
+  }catch(e){
+    list.innerHTML='<div style="padding:14px 16px;font-size:13px;color:var(--red);">Fehler beim Laden. Internetverbindung pruefen.</div>';
+    console.error('renderHS:',e);
+  }
+}
+
+// ══════════════════════════════════════════════════
+// PROFIL BEARBEITEN
+// ══════════════════════════════════════════════════
+function epMsg(fieldId, txt, type){
+  const m=document.getElementById(fieldId);
+  m.style.display='';
+  m.textContent=txt;
+  m.style.background=type==='ok'?'#dcfce7':'#fee2e2';
+  m.style.color=type==='ok'?'#14532d':'#7f1d1d';
+  setTimeout(()=>{m.style.display='none';},4000);
+}
+
+async function saveProfileName(){
+  if(!ME)return;
+  const newName=document.getElementById('ep-new-name').value.trim();
+  if(!newName){epMsg('ep-name-msg','Bitte einen Namen eingeben.','err');return;}
+  if(newName.length<2){epMsg('ep-name-msg','Name muss mindestens 2 Zeichen haben.','err');return;}
+  try{
+    // Save to Firestore
+    await DB.collection('highscores').doc(ME.uid).set(
+      {name:newName},{merge:true});
+    // Update local state
+    ME.name=newName;
+    const parts=newName.trim().split(/\s+/).filter(Boolean);
+    ME.initials=parts.length>=2
+      ?(parts[0][0]+parts[parts.length-1][0]).toUpperCase()
+      :newName.substring(0,2).toUpperCase();
+    // Update UI
+    document.getElementById('ep-avatar').textContent=ME.initials;
+    document.getElementById('ep-name').textContent=ME.name;
+    document.getElementById('s-profile-av').textContent=ME.initials;
+    updateChip();
+    epMsg('ep-name-msg','Name gespeichert!','ok');
+  }catch(e){
+    epMsg('ep-name-msg','Fehler: '+e.message,'err');
+  }
+}
+
+async function saveProfilePw(){
+  if(!ME)return;
+  const curPw=document.getElementById('ep-cur-pw').value;
+  const newPw=document.getElementById('ep-new-pw').value;
+  const newPw2=document.getElementById('ep-new-pw2').value;
+  if(!curPw){epMsg('ep-pw-msg','Bitte aktuelles Passwort eingeben.','err');return;}
+  if(newPw.length<6){epMsg('ep-pw-msg','Neues Passwort muss mindestens 6 Zeichen haben.','err');return;}
+  if(newPw!==newPw2){epMsg('ep-pw-msg','Neue Passwoerter stimmen nicht ueberein.','err');return;}
+  try{
+    // Re-authenticate first (required by Firebase before password change)
+    const cred=firebase.auth.EmailAuthProvider.credential(ME.email,curPw);
+    await AUTH.currentUser.reauthenticateWithCredential(cred);
+    // Now change password
+    await AUTH.currentUser.updatePassword(newPw);
+    document.getElementById('ep-cur-pw').value='';
+    document.getElementById('ep-new-pw').value='';
+    document.getElementById('ep-new-pw2').value='';
+    epMsg('ep-pw-msg','Passwort erfolgreich geaendert!','ok');
+  }catch(e){
+    const m={
+      'auth/wrong-password':'Aktuelles Passwort ist falsch.',
+      'auth/invalid-credential':'Aktuelles Passwort ist falsch.',
+      'auth/weak-password':'Neues Passwort ist zu schwach.',
+      'auth/requires-recent-login':'Bitte erst abmelden und neu anmelden, dann Passwort aendern.'
+    };
+    epMsg('ep-pw-msg',m[e.code]||'Fehler: '+e.message,'err');
+  }
+}
+
+// ══════════════════════════════════════════════════
+// SETTINGS
+// ══════════════════════════════════════════════════
+async function tryReset(){
+  const pin=document.getElementById('reset-pin').value;
+  const msg=document.getElementById('reset-msg');
+  if(pin==='112'){
+    try{
+      await fsResetAll();
+      msg.style.display='';msg.style.background='#dcfce7';msg.style.color='#14532d';
+      msg.textContent='Highscore wurde zurueckgesetzt!';
+      document.getElementById('reset-pin').value='';
+      updateChip();
+    }catch(e){
+      msg.style.display='';msg.style.background='#fee2e2';msg.style.color='#7f1d1d';
+      msg.textContent='Fehler: '+e.message;
+    }
+  }else{
+    msg.style.display='';msg.style.background='#fee2e2';msg.style.color='#7f1d1d';
+    msg.textContent='Falsches Passwort.';
+  }
+  setTimeout(()=>{msg.style.display='none';},3000);
+}
+
+// ══════════════════════════════════════════════════
+// CUSTOM QUESTIONS
+// ══════════════════════════════════════════════════
+function renderCQList(){
+  const cqs=loadCQ();
+  document.getElementById('cq-count').textContent=cqs.length;
+  const list=document.getElementById('cq-list');
+  if(!cqs.length){
+    list.innerHTML='<div style="padding:14px 16px;font-size:13px;color:var(--light);text-align:center;">Noch keine eigenen Fragen gespeichert.</div>';
+    return;
+  }
+  list.innerHTML='';
+  cqs.forEach((q,i)=>{
+    const row=document.createElement('div');
+    row.style.cssText='display:flex;align-items:center;gap:10px;padding:11px 16px;border-bottom:1px solid var(--border);';
+    if(i===cqs.length-1)row.style.borderBottom='none';
+    row.innerHTML='<div style="flex:1;min-width:0;"><div style="font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+q.frage+'</div><div style="font-size:11px;color:var(--light);margin-top:2px;">'+q.kategorie+' - Richtig: '+q.richtig+'</div></div><button onclick="deleteCQ('+i+')" style="background:#fee2e2;border:none;color:#b91c1c;font-size:11px;font-weight:800;padding:5px 10px;border-radius:8px;cursor:pointer;font-family:inherit;flex-shrink:0;">Loeschen</button>';
+    list.appendChild(row);
+  });
+}
+
+function saveCustomQuestion(){
+  const kat=document.getElementById('cq-kategorie').value.trim();
+  const frage=document.getElementById('cq-frage').value.trim();
+  const richtig=document.getElementById('cq-richtig').value.trim();
+  const f1=document.getElementById('cq-f1').value.trim();
+  const f2=document.getElementById('cq-f2').value.trim();
+  const f3=document.getElementById('cq-f3').value.trim();
+  if(!kat){cqMsg('Bitte Kategorie auswaehlen.','err');return;}
+  if(!frage){cqMsg('Bitte Fragentext eingeben.','err');return;}
+  if(!richtig){cqMsg('Bitte richtige Antwort eingeben.','err');return;}
+  if(!f1||!f2||!f3){cqMsg('Bitte alle 3 falschen Antworten ausfuellen.','err');return;}
+  const cqs=loadCQ();
+  cqs.push({kategorie:kat,frage,richtig,falsch:[f1,f2,f3]});
+  saveCQ(cqs);
+  ['cq-frage','cq-richtig','cq-f1','cq-f2','cq-f3'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('cq-kategorie').value='';
+  renderCQList();
+  cqMsg('Frage gespeichert!','ok');
+}
+
+function deleteCQ(idx){const cqs=loadCQ();cqs.splice(idx,1);saveCQ(cqs);renderCQList();}
+function deleteAllCustomQ(){if(!confirm('Alle eigenen Fragen loeschen?'))return;saveCQ([]);renderCQList();}
+function cqMsg(txt,type){
+  const m=document.getElementById('cq-msg');m.style.display='';m.textContent=txt;
+  m.style.background=type==='ok'?'#dcfce7':'#fee2e2';
+  m.style.color=type==='ok'?'#14532d':'#7f1d1d';
+  setTimeout(()=>{m.style.display='none';},3000);
+}
+
+// ══════════════════════════════════════════════════
+// QUIT MODAL
+// ══════════════════════════════════════════════════
+function showQuit(){document.getElementById('modal-quit').classList.add('show');}
+function closeQuit(){document.getElementById('modal-quit').classList.remove('show');}
+function confirmQuit(){closeQuit();goTo('s-home');}
+
+</script>
+</body>
+</html>
